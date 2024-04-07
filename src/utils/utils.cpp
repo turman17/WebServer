@@ -1,4 +1,6 @@
 #include <iostream>
+#include <cstdlib>
+
 
 void	checkArguments(int argc) {
 	if (argc != 2) {

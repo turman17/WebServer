@@ -2,7 +2,7 @@ CC = c++
 CFLAGS = -Wall -Wextra -Werror -std=c++98 -g -I./include
 NAME = webserv
 
-SRC = $(shell find ./srcs -name '*.cpp')
+SRC = $(shell find ./src -name '*.cpp')
 
 OBJ = $(patsubst %.cpp, %.o, $(SRC))
 
