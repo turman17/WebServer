@@ -2,7 +2,7 @@ CC = c++
 CFLAGS = -Wall -Wextra -Werror -std=c++98
 NAME = webserv
 
-SRC = $(find ./srcs -name *.c)
+SRC = $(find ./srcs -name *.cpp)
 
 OBJ = $(patsubst %.cpp, %.o, $(SRC))
 
