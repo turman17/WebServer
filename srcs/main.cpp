@@ -1,7 +1,7 @@
 #include "webserv.hpp"
+#include "Networking/Servers/TestServer.hpp"
 
-int	main(int argc, char** argv) {
-	checkArguments(argc);
-	std::cout << argv[1] << std::endl;
-	return (0);
+int main()
+{
+	HDE::TestServer t;
 }

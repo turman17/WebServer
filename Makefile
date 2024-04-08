@@ -1,5 +1,5 @@
 CC = c++
-CFLAGS = -Wall -Wextra -Werror -std=c++98 -g -I./include
+CFLAGS = -std=c++11 -g -I./include # -Wall -Wextra -Werror
 NAME = webserv
 
 SRC = $(shell find ./srcs -name '*.cpp')
