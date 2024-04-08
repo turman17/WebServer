@@ -6,7 +6,9 @@ int	main(int argc, char** argv) {
 	checkArguments(argc);
 	(void)argv;
 
-	Socket serverSocket;
+	ServerSocket serverSocket(PORT);
+
+	serverSocket.setListeningState();
 
 	try 
 	{

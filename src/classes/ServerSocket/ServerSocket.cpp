@@ -1,17 +1,11 @@
-#include "Socket.hpp"
+#include "ServerSocket.hpp"
 
-// @brief Constructs a new TCP socket and initializes its file descriptor.
-Socket::Socket() : m_fileDescriptor(socket(IPV4, TCP, DEFAULT_PROTOCOL)), m_status(0)
+// @brief Constructs a new TCP socket and binds its connection to a port
+// @param port the port on which to assign a connection
+ServerSocket::ServerSocket(int port) : m_fileDescriptor(socket(IPV4, TCP, DEFAULT_PROTOCOL)), m_status(0)
 {
 	m_status = errno;
 	std::memset(&m_address, 0, sizeof(m_address));
-}
-
-Socket::~Socket() {}
-
-// @brief Assings the socket to a connection on a certain port (use only on server sockets)
-// @param port the port on which to assign a connection
-void	Socket::bindSocket(int port) {
 	if (m_status != 0)
 		return ;
 
@@ -23,8 +17,12 @@ void	Socket::bindSocket(int port) {
 	m_status = errno;
 }
 
+ServerSocket::ServerSocket() {}
+
+ServerSocket::~ServerSocket() {}
+
 // @brief Set a listening state to the socket in order to receive requests 
-void	Socket::startListening() {
+void	ServerSocket::setListeningState() {
 	if (m_status == 0)
 		return ;
 	listen(m_fileDescriptor, 10);
@@ -32,17 +30,17 @@ void	Socket::startListening() {
 }
 
 // @brief Run an health test after using socket functions
-void	Socket::healthCheck(){
+void	ServerSocket::healthCheck(){
 	if (m_status != 0)
-		throw SocketException(strerror(m_status));
+		throw ServerSocketException(strerror(m_status));
 	std::cout << "Socket Health Check ✅" << std::endl;
 }
 
-Socket::SocketException::SocketException(const std::string& errorMessage) :
+ServerSocket::ServerSocketException::ServerSocketException(const std::string& errorMessage) :
 	m_errorMessage("SocketException: " + errorMessage) {}
 
-const char* Socket::SocketException::what() const throw() {
+const char* ServerSocket::ServerSocketException::what() const throw() {
 	return (m_errorMessage.c_str());
 }
 
-Socket::SocketException::~SocketException() throw() {}
+ServerSocket::ServerSocketException::~ServerSocketException() throw() {}

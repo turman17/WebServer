@@ -11,7 +11,7 @@
 # include <sys/errno.h>
 # include <stdio.h>
 
-# include "../src/classes/Socket/Socket.hpp"
+# include "../src/classes/ServerSocket/ServerSocket.hpp"
 
 const int IPV4 = AF_INET;
 const int TCP = SOCK_STREAM;
