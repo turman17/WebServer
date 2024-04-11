@@ -1,22 +1,16 @@
 #include "webserv.hpp"
 
-int	PORT = 0;
+int	main(void) {
 
-int	main(int argc, char** argv) {
-	checkArguments(argc);
-	(void)argv;
-
-	ServerSocket serverSocket(PORT);
-
-	serverSocket.setListeningState();
-
-	try 
-	{
-		serverSocket.healthCheck(); 
+	try {
+		ServerSocket	serverSocket("localhost", 8080);
+		int fd = accept(serverSocket.getFileDescriptor(), NULL, NULL);
+		char buffer[1024];
+		read (fd, buffer, sizeof(buffer));
+		std::cout << buffer << std::endl;
 	}
-	catch (std::exception& e) 
-	{
-		std::cout << e.what() << std::endl;
+	catch (std::exception& e) {
+		std::cerr << e.what() << std::endl;
 	}
-	return (0);
+	
 }

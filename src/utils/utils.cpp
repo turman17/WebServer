@@ -1,10 +1,8 @@
-#include <iostream>
-#include <cstdlib>
+#include "webserv.hpp"
 
-
-void	checkArguments(int argc) {
-	if (argc != 2) {
-		std::cerr << "Usage: ./webserv config" << std::endl;
-		std::exit(1);
-	}
+void	fatalError(int _errno, void (*atExit)(void *), void* trash) {
+	std::cerr << "Error: " << strerror(_errno) << " (fatal)" << std::endl;
+	if (atExit && trash)
+		atExit(trash);
+	std::exit(10);
 }

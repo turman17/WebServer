@@ -5,20 +5,19 @@
 
 class ServerSocket {
 public:
-			ServerSocket(int port);
+			ServerSocket(const std::string& hostname, const int& port);
 			~ServerSocket();
-	void	setListeningState();
-	void	healthCheck();
-
+	int		getFileDescriptor() const;
 private:
-	struct sockaddr_in	m_address;
 	int					m_fileDescriptor;
-	int					m_status;
 
-	ServerSocket();
+	//* Private Methods
+				ServerSocket();
+	in_addr_t	resolveHostname(const std::string& hostname);
+	void		bindSocket(in_addr_t ipAddress, int port);
+	void		setListeningState();
 
-
-
+	//* Exceptions
 	class	ServerSocketException : public std::exception {
 		public:
 			ServerSocketException(const std::string& errorMessage);
