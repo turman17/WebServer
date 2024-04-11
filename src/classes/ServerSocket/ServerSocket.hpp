@@ -7,6 +7,7 @@ class ServerSocket {
 public:
 			ServerSocket(const std::string& hostname, const int& port);
 			~ServerSocket();
+	void	closeSocket();
 	int		getFileDescriptor() const;
 private:
 	int					m_fileDescriptor;

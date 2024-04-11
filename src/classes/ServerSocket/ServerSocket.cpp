@@ -3,7 +3,9 @@
 ServerSocket::ServerSocket() {}
 
 
-ServerSocket::~ServerSocket() {}
+ServerSocket::~ServerSocket() {
+	closeSocket();
+}
 
 
 /**
@@ -68,6 +70,9 @@ in_addr_t	ServerSocket::resolveHostname(const std::string& hostname) {
  */
 void	ServerSocket::bindSocket(in_addr_t ipAddress, int port) {
 
+	if (port < 0 || port > 65536)
+		throw (std::string("bindSocket() - Invalid port"));
+
 	sockaddr_in connectionConfig;
 
 	std::memset(&connectionConfig, 0, sizeof(connectionConfig));
@@ -89,6 +94,13 @@ void	ServerSocket::bindSocket(in_addr_t ipAddress, int port) {
 void	ServerSocket::setListeningState() {
 	if (listen(m_fileDescriptor, MAX_CONNECTIONS_QUEUE) == -1)
 		throw ("setListeningState() - " + std::string(strerror(errno)));
+}
+
+
+void	ServerSocket::closeSocket() {
+	if (m_fileDescriptor > -1)
+		close(m_fileDescriptor);
+	m_fileDescriptor = -1;
 }
 
 
