@@ -1,5 +1,7 @@
 #include "TestServer.hpp"
 #include "unistd.h"
+#include <cstring>
+#include <string>
 
 HDE::TestServer::TestServer()
 : SimpleServer(AF_INET, SOCK_STREAM, 0, 80, INADDR_ANY, 10)
@@ -22,8 +24,8 @@ void HDE::TestServer::_handler()
 
 void HDE::TestServer::_responder()
 {
-    char *hello = "Hello from Server\n";
-    write(newSocket, hello, strlen(hello));
+    std::string hello = "Hello from Server\n";
+    write(newSocket, hello.c_str(), hello.length());
     close(newSocket);
 }
 
