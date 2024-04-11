@@ -2,21 +2,26 @@
 # define SERVERSOCKET_HPP
 
 # include "webserv.hpp"
+# include "../FileDescriptor/FileDescriptor.hpp"
 
 class ServerSocket {
+
 public:
-			ServerSocket(const std::string& hostname, const int& port);
-			~ServerSocket();
-	void	closeSocket();
-	int		getFileDescriptor() const;
+					ServerSocket(const std::string& hostname, const int& port);
+					~ServerSocket();
+	void			closeSocket();
+	const int&		getFileDescriptor() const;
+
 private:
-	int					m_fileDescriptor;
+	const FileDescriptor m_fileDescriptor;
+
 
 	//* Private Methods
 				ServerSocket();
 	in_addr_t	resolveHostname(const std::string& hostname);
 	void		bindSocket(in_addr_t ipAddress, int port);
 	void		setListeningState();
+
 
 	//* Exceptions
 	class	ServerSocketException : public std::exception {
