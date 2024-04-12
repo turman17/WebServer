@@ -28,6 +28,7 @@ public:
 	void		set(const int& fd);
 	void		close() const;
 	void		setNonBlocking() const;
+	bool		badFileDescriptor() const;
 
 private:
 	int 		m_fd;
