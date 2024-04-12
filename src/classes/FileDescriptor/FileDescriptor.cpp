@@ -46,9 +46,7 @@ FileDescriptor& FileDescriptor::operator=(const FileDescriptor& other) {
 }
 
 
-FileDescriptor::~FileDescriptor() {
-	this->close();
-}
+FileDescriptor::~FileDescriptor() {}
 
 
 const int&	FileDescriptor::get() const {
@@ -88,6 +86,15 @@ void	FileDescriptor::setNonBlocking() const {
 		flags |= O_NONBLOCK;
 		fcntl(m_fd, F_SETFL, flags);
 	}
+}
+
+bool		FileDescriptor::badFileDescriptor() const {
+
+	int flags = fcntl(m_fd, F_GETFL, 0);
+	if (!flags) {
+		return (true);
+	}
+	return (false);
 }
 
 FileDescriptor::operator int() const {
