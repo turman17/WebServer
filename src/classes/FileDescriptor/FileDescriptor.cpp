@@ -90,6 +90,9 @@ void	FileDescriptor::setNonBlocking() const {
 	}
 }
 
+FileDescriptor::operator int() const {
+	return (m_fd);
+}
 
 bool FileDescriptor::operator<(int fd) const { return (m_fd < fd); }
 bool FileDescriptor::operator>(int fd) const { return (m_fd > fd); }

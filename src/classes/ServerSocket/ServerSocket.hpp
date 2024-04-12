@@ -7,10 +7,10 @@
 class ServerSocket {
 
 public:
-					ServerSocket(const std::string& hostname, const int& port);
-					~ServerSocket();
-	void			closeSocket();
-	const int&		getFileDescriptor() const;
+							ServerSocket(const std::string& hostname, const int& port);
+							~ServerSocket();
+	void					closeSocket();
+	const FileDescriptor&	getFileDescriptor() const;
 
 private:
 	const FileDescriptor m_fileDescriptor;

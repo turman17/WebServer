@@ -11,6 +11,7 @@ public:
 	FileDescriptor(const int& fd);
 	FileDescriptor(const FileDescriptor& other);
 	FileDescriptor& operator=(const FileDescriptor& other);
+	operator int() const;
 	bool operator<(int fd) const;
 	bool operator>(int fd) const;
 	bool operator<=(int fd) const;

@@ -1,5 +1,7 @@
 #include "ServerSocket.hpp"
 
+using namespace sockets;
+
 ServerSocket::ServerSocket() {}
 
 
@@ -14,7 +16,7 @@ ServerSocket::~ServerSocket() {
  * @param hostname hostname on which to assign a connection 
  * @param port port on which to assign a connection
  * 
- * @throw  In case of an error throws and exception o type `ServerSocketException` (std::exception)
+ * @throw  In case of an error throws and exception of type `ServerSocketException` (std::exception)
  * 
 */
 ServerSocket::ServerSocket(const std::string& hostname, const int& port)
@@ -115,8 +117,8 @@ void	ServerSocket::closeSocket() {
 }
 
 
-const int&		ServerSocket::getFileDescriptor() const {
-	return (m_fileDescriptor.get());
+const FileDescriptor&		ServerSocket::getFileDescriptor() const {
+	return (m_fileDescriptor);
 }
 
 

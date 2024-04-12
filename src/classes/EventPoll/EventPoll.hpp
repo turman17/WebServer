@@ -4,20 +4,24 @@
 # include "webserv.hpp"
 # include "../FileDescriptor/FileDescriptor.hpp"
 
+using namespace epoll;
+
 class ServerSocket;
 
 class EventPoll {
 
 public:
-	EventPoll(ServerSocket* controlSocket);
-	~EventPoll();
-	void	add(const int& fileDescriptor, uint32_t eventsToNotify);
-	void	mod(const int& fileDescriptor, uint32_t eventsToNotify);
-	void	remove(const int& fileDescriptor);
-	//TODO Somehow integrate epoll_wait within the class
+					EventPoll(ServerSocket* controlSocket);
+					~EventPoll();
+	void			add(const FileDescriptor& fileDescriptor, uint32_t eventsToNotify) const;
+	void			mod(const FileDescriptor& fileDescriptor, uint32_t eventsToNotify) const;
+	void			remove(const FileDescriptor& fileDescriptor) const;
+	void			waitForEvents() const;
+	FileDescriptor	getNextEvent(int &eventType) const;
 private:
-	const FileDescriptor	m_fileDescriptor;
-	const ServerSocket		*m_controlSocket;
+	const FileDescriptor										m_fileDescriptor;
+	const ServerSocket*											m_controlSocket;
+	mutable CircularBuffer<FileDescriptor, (MAX_EVENTS / 4)>	m_newEvents;
 
 
 	//* Private Methods
@@ -32,6 +36,11 @@ private:
 			const char* what() const throw();
 		private:
 			const std::string	m_errorMessage;
+	};
+
+	class NoMoreNewEvents {
+		public:
+			const char* what() const throw();
 	};
 };
 
