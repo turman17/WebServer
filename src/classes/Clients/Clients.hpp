@@ -1,13 +1,12 @@
 #ifndef CLIENTS_HPP
 # define CLIENTS_HPP
 
-# include "webserv.hpp"
+# include "stdlibraries.hpp"
+# include "../HttpRequest/HttpRequest.hpp"
 
-class HttpRequest;
 
-typedef std::pair<const FileDescriptor, HttpRequest*> FdReqPair;
-typedef std::map<const FileDescriptor, HttpRequest*> FdReqMap;
-typedef std::map<const FileDescriptor, HttpRequest*>::iterator Iterator;
+using namespace http;
+
 
 class Clients {
 public:

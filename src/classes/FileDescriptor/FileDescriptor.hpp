@@ -1,8 +1,7 @@
 #ifndef FILEDESCRIPTOR_HPP
 # define FILEDESCRIPTOR_HPP
 
-# include <unistd.h>
-# include <fcntl.h>
+# include "stdlibraries.hpp"
 
 class FileDescriptor {
 
