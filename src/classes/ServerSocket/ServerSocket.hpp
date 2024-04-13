@@ -1,14 +1,22 @@
 #ifndef SERVERSOCKET_HPP
 # define SERVERSOCKET_HPP
 
-# include "webserv.hpp"
+# include "stdlibraries.hpp"
+
 # include "../FileDescriptor/FileDescriptor.hpp"
+
+namespace sockets {
+	const int IPV4 = AF_INET;
+	const int TCP = SOCK_STREAM;
+	const int DEFAULT_PROTOCOL = 0;
+	const int MAX_CONNECTIONS_QUEUE = 100;
+};
 
 class ServerSocket {
 
 public:
-							ServerSocket(const std::string& hostname, const int& port);
-							~ServerSocket();
+	ServerSocket(const std::string& hostname, const int& port);
+	~ServerSocket();
 	void					closeSocket();
 	const FileDescriptor&	getFileDescriptor() const;
 

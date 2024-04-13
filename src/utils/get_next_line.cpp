@@ -6,10 +6,9 @@ static std::string*	ft_strjoinm(const std::string& s1, const std::string& s2);
 static void			buffer_clear(char *buffer);
 static void			free_line(std::string *line);
 
-std::string*	getNextLine(const FileDescriptor& fd)
+std::string*	getNextLine(const FileDescriptor& fd, char buffer[gnl::BUFFER_SIZE + 1])
 {
-	static char		buffer[gnl::BUFFER_SIZE + 1];
-	std::string*	line(0);
+	std::string*	line = NULL;
 	int				flag;
 	int				bytesRead;
 

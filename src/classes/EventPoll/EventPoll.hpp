@@ -1,36 +1,44 @@
 #ifndef EVENTPOLL_HPP
 # define EVENTPOLL_HPP
  
-# include "webserv.hpp"
+# include "stdlibraries.hpp"
 # include "../FileDescriptor/FileDescriptor.hpp"
+# include "../ServerSocket/ServerSocket.hpp"
+# include "../Event/Event.hpp"
+
+namespace epoll {
+	const int MAX_EVENTS = 256;
+	const int CAN_READ = EPOLLIN;
+	const int CAN_WRITE = EPOLLOUT;
+
+	const bool NEW_EVENTS = true;
+
+	enum EventType {
+		NEW_CONNECTION = 0,
+		READ_OPERATIONS= EPOLLIN,
+		WRITE_OPERATIONS = EPOLLOUT
+	};
+
+	typedef std::vector<ServerSocket*>::const_iterator Iterator;
+};
 
 using namespace epoll;
 
-class ServerSocket;
 
 class EventPoll {
 
 public:
-					EventPoll(ServerSocket* controlSocket);
-					~EventPoll();
-	void			add(const FileDescriptor& fileDescriptor, uint32_t eventsToNotify) const;
-	void			mod(const FileDescriptor& fileDescriptor, uint32_t eventsToNotify) const;
-	void			remove(const FileDescriptor& fileDescriptor) const;
-	void			waitForEvents() const;
-	FileDescriptor	getNextEvent(int &eventType) const;
+			EventPoll(std::vector<ServerSocket*>& controlSockets);
+			~EventPoll();
+	void	add(const FileDescriptor& fileDescriptor, uint32_t eventsToNotify) const;
+	void	mod(const FileDescriptor& fileDescriptor, uint32_t eventsToNotify) const;
+	void	remove(const FileDescriptor& fileDescriptor) const;
+	void	waitForEvents() const;
+	Event	getNextEvent() const;
+
 private:
-	const FileDescriptor										m_fileDescriptor;
-	const ServerSocket*											m_controlSocket;
-
-	class Event : public FileDescriptor {
-	public:
-		Event();
-		Event(const FileDescriptor& fd, const uint32_t& events);
-		uint32_t getEvents() const;
-	private:
-		uint32_t	m_events;
-	};
-
+	const FileDescriptor				m_fileDescriptor;
+	std::vector<ServerSocket*>			m_controlSockets;
 	mutable CircularBuffer<Event, (MAX_EVENTS / 4)>			m_newEvents;
 
 

@@ -3,10 +3,17 @@
 #include "../FileDescriptor/FileDescriptor.hpp"
 
 
-EventPoll::EventPoll() : m_fileDescriptor(-1), m_controlSocket(NULL) {}
+EventPoll::EventPoll() : m_fileDescriptor(-1) {}
 
 
-EventPoll::~EventPoll() {}
+EventPoll::~EventPoll() {
+	for (std::vector<ServerSocket*>::iterator it = m_controlSockets.begin();
+			it != m_controlSockets.end(); std::advance(it, 1)) {
+				(*it)->closeSocket();
+			}
+	m_controlSockets.clear();
+	m_fileDescriptor.close();
+}
 
 
 /**
@@ -17,14 +24,17 @@ EventPoll::~EventPoll() {}
  * @throw  In case of an error throws and exception of type `EventPollException` (std::exception)
  * 
 */
-EventPoll::EventPoll(ServerSocket* controlSocket)
-	: m_fileDescriptor(epoll_create(MAX_EVENTS)), m_controlSocket(controlSocket) {
+EventPoll::EventPoll(std::vector<ServerSocket*>& controlSockets)
+	: m_fileDescriptor(epoll_create(MAX_EVENTS)), m_controlSockets(controlSockets) {
 
 	if (m_fileDescriptor < 0) {
 		throw EventPollException("epoll_create()" + std::string (std::strerror(errno)));
 	}
 
-	add(m_controlSocket->getFileDescriptor(), CAN_READ);
+	for (epoll::Iterator it = controlSockets.begin();
+			it != controlSockets.end(); std::advance(it, 1)) {
+				add((*it)->getFileDescriptor(), CAN_READ);
+			}
 }
 
 
@@ -47,7 +57,7 @@ void	EventPoll::add(const FileDescriptor& fileDescriptor, uint32_t eventsToNotif
 
 	if (epoll_ctl(m_fileDescriptor,
 		EPOLL_CTL_ADD, fileDescriptor, &eventSettings) == -1) {
-			throw EventPollException("epoll_ctl(ADD)" + std::string (std::strerror(errno)));
+			throw EventPollException("epoll_ctl(ADD) " + std::string (std::strerror(errno)));
 		}
 }
 
@@ -71,7 +81,7 @@ void	EventPoll::mod(const FileDescriptor& fileDescriptor, uint32_t eventsToNotif
 
 	if (epoll_ctl(m_fileDescriptor,
 		EPOLL_CTL_MOD, fileDescriptor, &eventSettings) == -1) {
-			throw EventPollException("epoll_ctl(MOD)" + std::string (std::strerror(errno)));
+			throw EventPollException("epoll_ctl(MOD) " + std::string (std::strerror(errno)));
 		}
 }
 
@@ -105,11 +115,11 @@ void	EventPoll::waitForEvents() const {
 
 	int newEventsNum = epoll_wait(m_fileDescriptor, newEvents, MAX_EVENTS / 4, -1);
 	if (newEventsNum == -1) {
-		throw EventPollException("epoll_wait()" + std::string (std::strerror(errno)));
+		throw EventPollException("epoll_wait() " + std::string (std::strerror(errno)));
 	}
 
 	for (int i = 0; i < newEventsNum; i++) {
-		m_newEvents.push_back(Event(newEvents[i].data.fd, newEvents[i].events));
+		m_newEvents.push_back(Event(newEvents[i].data.fd, newEvents[i].events, NULL));
 	}
 }
 
@@ -120,36 +130,23 @@ void	EventPoll::waitForEvents() const {
  * @throw  Whenever there's no more events, throws and exception of type `NoMoreNewEvents`
  * 
 */
-FileDescriptor	EventPoll::getNextEvent(int &eventType) const {
+Event	EventPoll::getNextEvent() const {
 	
 	if (m_newEvents.isEmpty()) {
 		throw NoMoreNewEvents();
 	}
+
 	Event nextEvent = m_newEvents.front();
 	m_newEvents.pop_front();
 
-	if (nextEvent.get() == m_controlSocket->getFileDescriptor()) {
-		eventType = NEW_CONNECTION;
-	}
-	else if (nextEvent.getEvents() | CAN_READ) {
-		eventType = READ_OPERATIONS;
-	}
-	else {
-		eventType = WRITE_OPERATIONS;
-	}
-	// TODO Continue whenever clients class is ready
+	epoll::Iterator it =
+		std::find(m_controlSockets.begin(), m_controlSockets.end(), nextEvent);
 
+	if (it != m_controlSockets.end()) {
+		nextEvent.setServerSocket(*it);
+		nextEvent.setEvents(NEW_CONNECTION);
+	}
 	return (nextEvent);
-}
-
-
-EventPoll::Event::Event() : FileDescriptor(), m_events(0) {}
-
-EventPoll::Event::Event(const FileDescriptor& fd, const uint32_t& events) :
-	FileDescriptor(fd), m_events(events) {}
-
-uint32_t EventPoll::Event::getEvents() const {
-	return (m_events);
 }
 
 

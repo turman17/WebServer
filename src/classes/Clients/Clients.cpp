@@ -1,5 +1,6 @@
 #include "Clients.hpp"
 
+using namespace http;
 
 void	Clients::addToSocketMap(const FileDescriptor& fd, HttpRequest* request) {
 	m_socketToRequestMap.insert(std::make_pair(fd, request));
