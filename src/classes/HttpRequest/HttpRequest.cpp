@@ -23,7 +23,7 @@ bool	HttpRequest::readRequest() {
 	try {
 		firstLine = getNextLine(m_targetSocketFileDescriptor);
 	}
-	catch (const std::exception&) {
+	catch (const std::exception& e) {
 		return (false);
 	}
 
@@ -35,6 +35,8 @@ bool	HttpRequest::readRequest() {
 				m_statusCode = NOT_IMPLEMENTED_501;
 				return (true);
 			}
+
+	std::cout << m_requestMethod << std::endl;
 
 	std::string::iterator secondSpaceIt = std_next(firstSpaceIt,
 		firstLine->find_first_of(' '));
@@ -67,6 +69,9 @@ bool	HttpRequest::readRequest() {
 bool	HttpRequest::createResponse() {
 
 	m_response += ("HTTP/1.1 " + m_statusCode + "\r\n");
+
+	//? Connection: close
+
 	return (true);
 }
 

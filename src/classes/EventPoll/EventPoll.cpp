@@ -6,10 +6,7 @@
 EventPoll::EventPoll() : m_fileDescriptor(-1), m_controlSocket(NULL) {}
 
 
-EventPoll::~EventPoll() {
-
-	m_fileDescriptor.close();
-}
+EventPoll::~EventPoll() {}
 
 
 /**
@@ -112,7 +109,7 @@ void	EventPoll::waitForEvents() const {
 	}
 
 	for (int i = 0; i < newEventsNum; i++) {
-		m_newEvents.push_back(FileDescriptor(newEvents[i].data.fd));
+		m_newEvents.push_back(Event(newEvents[i].data.fd, newEvents[i].events));
 	}
 }
 
@@ -127,16 +124,32 @@ FileDescriptor	EventPoll::getNextEvent(int &eventType) const {
 	
 	if (m_newEvents.isEmpty()) {
 		throw NoMoreNewEvents();
-	} 
-	FileDescriptor nextEvent = m_newEvents.front();
+	}
+	Event nextEvent = m_newEvents.front();
 	m_newEvents.pop_front();
 
-	if (nextEvent == m_controlSocket->getFileDescriptor()) {
+	if (nextEvent.get() == m_controlSocket->getFileDescriptor()) {
 		eventType = NEW_CONNECTION;
+	}
+	else if (nextEvent.getEvents() | CAN_READ) {
+		eventType = READ_OPERATIONS;
+	}
+	else {
+		eventType = WRITE_OPERATIONS;
 	}
 	// TODO Continue whenever clients class is ready
 
 	return (nextEvent);
+}
+
+
+EventPoll::Event::Event() : FileDescriptor(), m_events(0) {}
+
+EventPoll::Event::Event(const FileDescriptor& fd, const uint32_t& events) :
+	FileDescriptor(fd), m_events(events) {}
+
+uint32_t EventPoll::Event::getEvents() const {
+	return (m_events);
 }
 
 

@@ -40,25 +40,17 @@ namespace epoll {
 	enum EventType {
 		UNKNOWN,
 		NEW_CONNECTION,
-		//TODO
+		READ_OPERATIONS,
+		WRITE_OPERATIONS
 	};
 };
 
 namespace http {
 	const char OK_200[] = "200 OK";
 	const char REDIRECT_302[] = "302 REDIRECT";
-	const char NOT_FOUND_404[] = "404 NOTFOUND";
+	const char NOT_FOUND_404[] = "404 Not Found";
 	const char NOT_IMPLEMENTED_501[] = "501 NOTIMPLEMENTED";
 };
-
-
-
-
-
-
-
-
-
 
 # include "../src/utils/CircularBuffer.hpp"
 # include "../src/utils/utills.hpp"
@@ -66,7 +58,8 @@ namespace http {
 # include "../src/classes/ServerSocket/ServerSocket.hpp"
 # include "../src/classes/FileDescriptor/FileDescriptor.hpp"
 # include "../src/classes/EventPoll/EventPoll.hpp"
-# include "../src/classes/Request/HttpRequest.hpp"
+# include "../src/classes/HttpRequest/HttpRequest.hpp"
+# include "../src/classes/Clients/Clients.hpp"
 
 
 void					fatalError(int _errno, void (*atExit)(void *) = NULL, 
