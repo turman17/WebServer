@@ -23,7 +23,7 @@ public:
 	bool operator>=(const FileDescriptor& other) const;
 	bool operator==(const FileDescriptor& other) const;
 
-	~FileDescriptor();
+	virtual ~FileDescriptor();
 	const int& 	get() const;
 	void		set(const int& fd);
 	void		close() const;

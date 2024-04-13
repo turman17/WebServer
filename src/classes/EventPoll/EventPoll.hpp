@@ -21,7 +21,17 @@ public:
 private:
 	const FileDescriptor										m_fileDescriptor;
 	const ServerSocket*											m_controlSocket;
-	mutable CircularBuffer<FileDescriptor, (MAX_EVENTS / 4)>	m_newEvents;
+
+	class Event : public FileDescriptor {
+	public:
+		Event();
+		Event(const FileDescriptor& fd, const uint32_t& events);
+		uint32_t getEvents() const;
+	private:
+		uint32_t	m_events;
+	};
+
+	mutable CircularBuffer<Event, (MAX_EVENTS / 4)>			m_newEvents;
 
 
 	//* Private Methods

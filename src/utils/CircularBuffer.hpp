@@ -35,7 +35,7 @@ public:
 		if (m_size < 1) {
 			throw IndexOutOfBounds();
 		}
-		return (m_container[0]);
+		return (m_container[m_head]);
 	}
 
 	bool	isEmpty() {
@@ -50,13 +50,18 @@ public:
 		return (m_size);
 	}
 
-	T& operator[](int index) {
-		
-		index = index + m_head;
+	void	print() {
+		for (int i = m_head; i != m_tail; i = (i + 1) % N) {
+			std::cout << i << " " << m_container[i] << std::endl;
+		}
+	}
+
+	T& operator[](std::size_t index) {
 		if (index >= m_size) {
 			throw IndexOutOfBounds();
 		}
-    	return m_container[index];
+		index = (m_head + index) % N;
+		return m_container[index];
 	}
 
 	class IndexOutOfBounds : public std::exception {
