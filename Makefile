@@ -4,18 +4,20 @@ NAME = webserv
 
 SRC = $(shell find ./src -name '*.cpp')
 
-OBJ = $(patsubst %.cpp, %.o, $(SRC))
+OBJ_DIR = obj/
+OBJ = $(patsubst ./src/%.cpp, $(OBJ_DIR)%.o, $(SRC))
 
 all: $(NAME)
 
 $(NAME): $(OBJ)
 	$(CC) $(CFLAGS) $^ -o $@
 
-%.o: %.cpp
+$(OBJ_DIR)%.o: ./src/%.cpp
+	@mkdir -p $(@D)
 	$(CC) $(CFLAGS) -c $< -o $@
 
 clean:
-	rm -rf $(OBJ)
+	rm -rf $(OBJ_DIR)
 
 fclean: clean
 	rm -rf $(NAME)
