@@ -3,6 +3,10 @@
 
 # include <exception>
 
+bool			startsWith(const std::string& toExpect, const std::string& text);
+unsigned int	countWords(const std::string& str);
+bool			isOnlySpaces(const std::string& str);
+
 template<typename Iterator>
 Iterator std_next(const Iterator& it, int x = 1) {
 
@@ -22,6 +26,13 @@ class BadRead : public std::exception {
 public:
 	const char* what() const throw() {
 		return ("Bad read");
+	}
+};
+
+class UnexpectedDifference : public std::exception {
+public:
+	const char* what() const throw() {
+		return ("Unexpected difference");
 	}
 };
 

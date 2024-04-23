@@ -10,16 +10,19 @@ class ServerSocket;
 class Event : public FileDescriptor {
 public:
 					Event();
-					Event(const FileDescriptor& fd,
-						const uint32_t& events, ServerSocket* serverSocket);
+					Event(const FileDescriptor& fd, const uint32_t& events);
 	uint32_t		getEvents() const;
 	void			setEvents(const uint32_t& events);
-	void			setServerSocket(ServerSocket* serverSocket);
-	ServerSocket*	getServerSocket() const;
-	int			fd() const;
+	int				fd() const;
+	bool			isNewConnection(const std::vector<ServerSocket>& listeningSockets);
+	bool			isReadable() const;
+	bool			isWritable() const;
+	int				getPort() const;
+	std::string		getHostname() const;
 private:
 	uint32_t		m_events;
-	ServerSocket*	m_serverSocket;	
+	std::string		m_hostname;
+	int				m_port;
 };
 
 bool operator==(const ServerSocket* serverSocket, const Event event);

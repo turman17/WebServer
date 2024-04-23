@@ -17,9 +17,12 @@ class ServerSocket {
 public:
 	ServerSocket(const std::string& hostname, const int& port);
 	~ServerSocket();
+	ServerSocket(const ServerSocket& other);
 	void					closeSocket();
+	bool					isOpen();
 	const FileDescriptor&	getFileDescriptor() const;
-
+	int 					getBoundPort() const;
+	std::string				getBoundIP() const;
 private:
 	const FileDescriptor m_fileDescriptor;
 

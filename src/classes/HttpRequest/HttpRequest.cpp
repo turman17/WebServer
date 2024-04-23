@@ -114,4 +114,17 @@ bool	HttpRequest::sendResponse() {
 	return (true);
 }
 
+void	HttpRequest::setHostname(const std::string& hostname) {
+	m_hostname = hostname;
+}
+
+void	HttpRequest::setPort(const int& port) {
+	m_port = port;
+}
+
+void	HttpRequest::setDomain(const std::string& domain) {
+	m_domain = domain;
+}
+
+
 

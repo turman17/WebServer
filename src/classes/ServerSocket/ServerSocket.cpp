@@ -5,10 +5,10 @@ using namespace sockets;
 ServerSocket::ServerSocket() {}
 
 
-ServerSocket::~ServerSocket() {
-	closeSocket();
-}
+ServerSocket::~ServerSocket() {}
 
+ServerSocket::ServerSocket(const ServerSocket& other) :
+	m_fileDescriptor(other.m_fileDescriptor) {}
 
 /**
  * @brief Constructs a new TCP socket and binds its connection to a port and a hostname
@@ -116,9 +116,39 @@ void	ServerSocket::closeSocket() {
 	m_fileDescriptor.close();
 }
 
+bool ServerSocket::isOpen() {
+	return (!m_fileDescriptor.badFileDescriptor());
+}
+
 
 const FileDescriptor&		ServerSocket::getFileDescriptor() const {
 	return (m_fileDescriptor);
+}
+
+int ServerSocket::getBoundPort() const {
+
+	sockaddr_in addr;
+	socklen_t len = sizeof(addr);
+	if (getsockname(m_fileDescriptor, (struct sockaddr*)&addr, &len) == -1) {
+		throw ServerSocketException("getsockname() " + std::string (std::strerror(errno)));
+	}
+	return ntohs(addr.sin_port);
+}
+
+std::string ServerSocket::getBoundIP() const {
+
+	sockaddr_in addr;
+	socklen_t len = sizeof(addr);
+	char ipStr[INET_ADDRSTRLEN];
+	
+	if (getsockname(m_fileDescriptor, (struct sockaddr*)&addr, &len) == -1) {
+		throw ServerSocketException("getsockname() " + std::string (std::strerror(errno)));
+	}
+
+	if (!inet_ntop(AF_INET, &addr.sin_addr, ipStr, sizeof(ipStr))) {
+		throw ServerSocketException("inet_ntop() " + std::string (std::strerror(errno)));
+	}
+	return std::string(ipStr);
 }
 
 

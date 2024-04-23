@@ -3,38 +3,21 @@
 #include "../FileDescriptor/FileDescriptor.hpp"
 
 
-EventPoll::EventPoll() : m_fileDescriptor(-1) {}
-
-
-EventPoll::~EventPoll() {
-	for (std::vector<ServerSocket*>::iterator it = m_controlSockets.begin();
-			it != m_controlSockets.end(); std::advance(it, 1)) {
-				(*it)->closeSocket();
-			}
-	m_controlSockets.clear();
-	m_fileDescriptor.close();
-}
-
-
 /**
- * @brief Creates a new `EventPoll`
+ * @brief Creates a new instance of the EventPoll Class, by initializing it's file descriptor with the epoll_create() function
  * 
- * @param controlSocket The `ServerSocket` to where the clients will connect
- * 
- * @throw  In case of an error throws and exception of type `EventPollException` (std::exception)
- * 
+ * @throw In case of an error throws and exception of type `EventPollException` (std::exception)
 */
-EventPoll::EventPoll(std::vector<ServerSocket*>& controlSockets)
-	: m_fileDescriptor(epoll_create(MAX_EVENTS)), m_controlSockets(controlSockets) {
+EventPoll::EventPoll() : m_fileDescriptor(epoll_create(MAX_EVENTS)) {
 
 	if (m_fileDescriptor < 0) {
 		throw EventPollException("epoll_create()" + std::string (std::strerror(errno)));
-	}
+	} 
+}
 
-	for (epoll::Iterator it = controlSockets.begin();
-			it != controlSockets.end(); std::advance(it, 1)) {
-				add((*it)->getFileDescriptor(), CAN_READ);
-			}
+
+EventPoll::~EventPoll() {
+	m_fileDescriptor.close();
 }
 
 
@@ -106,6 +89,8 @@ void	EventPoll::remove(const FileDescriptor& fileDescriptor) const {
 /**
  * @brief Starts waiting for new event notification
  * 
+ * @param controlSockets A vector of the sockets to listen for new events on
+ * 
  * @throw  In case of an error throws and exception of type `EventPollException` (std::exception)
  * 
 */
@@ -119,7 +104,7 @@ void	EventPoll::waitForEvents() const {
 	}
 
 	for (int i = 0; i < newEventsNum; i++) {
-		m_newEvents.push_back(Event(newEvents[i].data.fd, newEvents[i].events, NULL));
+		m_newEvents.push_back(Event(newEvents[i].data.fd, newEvents[i].events));
 	}
 }
 
@@ -139,13 +124,6 @@ Event	EventPoll::getNextEvent() const {
 	Event nextEvent = m_newEvents.front();
 	m_newEvents.pop_front();
 
-	epoll::Iterator it =
-		std::find(m_controlSockets.begin(), m_controlSockets.end(), nextEvent);
-
-	if (it != m_controlSockets.end()) {
-		nextEvent.setServerSocket(*it);
-		nextEvent.setEvents(NEW_CONNECTION);
-	}
 	return (nextEvent);
 }
 

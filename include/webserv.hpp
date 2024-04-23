@@ -9,8 +9,9 @@
 # include "../src/classes/EventPoll/EventPoll.hpp"
 # include "../src/classes/HttpRequest/HttpRequest.hpp"
 # include "../src/classes/Clients/Clients.hpp"
+# include "../src/classes/ServerBlock/ServerBlock.hpp"
+# include "../src/classes/Server/Server.hpp"
 
-
-
+const char DEFAULT_ERROR_PATH[] = "./Errors/DefaultError.html";
 
 #endif

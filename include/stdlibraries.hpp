@@ -12,6 +12,8 @@
 # include <vector>
 # include <map>
 # include <algorithm>
+# include <iterator>
+# include <numeric>
 
 # include <sys/socket.h>
 # include <sys/errno.h>
@@ -25,6 +27,10 @@
 
 # include "../src/utils/CircularBuffer.hpp"
 # include "../src/utils/utills.hpp"
+
+typedef std::pair<std::string, std::string> StrPair;
+typedef std::vector<std::string>			StrVector;
+
 
 namespace gnl {
 	const int BUFFER_SIZE = 1024;

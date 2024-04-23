@@ -11,7 +11,13 @@ public:
 	bool	readRequest();
 	bool	performRequest();
 	bool	sendResponse();
+	void	setHostname(const std::string& hostname);
+	void	setPort(const int& port);
+	void	setDomain(const std::string& domain);
 private:
+	std::string				m_hostname;
+	int						m_port;
+	std::string				m_domain;
 	std::string				m_requestMethod;
 	std::string				m_fileURI;
 	std::string				m_messageBody;

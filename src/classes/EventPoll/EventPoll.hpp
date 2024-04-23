@@ -8,8 +8,6 @@
 
 namespace epoll {
 	const int MAX_EVENTS = 256;
-	const int CAN_READ = EPOLLIN;
-	const int CAN_WRITE = EPOLLOUT;
 
 	const bool NEW_EVENTS = true;
 
@@ -19,7 +17,7 @@ namespace epoll {
 		WRITE_OPERATIONS = EPOLLOUT
 	};
 
-	typedef std::vector<ServerSocket*>::const_iterator Iterator;
+	typedef std::vector<ServerSocket>::const_iterator Iterator;
 };
 
 using namespace epoll;
@@ -28,7 +26,7 @@ using namespace epoll;
 class EventPoll {
 
 public:
-			EventPoll(std::vector<ServerSocket*>& controlSockets);
+			EventPoll();
 			~EventPoll();
 	void	add(const FileDescriptor& fileDescriptor, uint32_t eventsToNotify) const;
 	void	mod(const FileDescriptor& fileDescriptor, uint32_t eventsToNotify) const;
@@ -37,13 +35,8 @@ public:
 	Event	getNextEvent() const;
 
 private:
-	const FileDescriptor				m_fileDescriptor;
-	std::vector<ServerSocket*>			m_controlSockets;
+	const FileDescriptor									m_fileDescriptor;
 	mutable CircularBuffer<Event, (MAX_EVENTS / 4)>			m_newEvents;
-
-
-	//* Private Methods
-	EventPoll();
 
 
 	//* Exceptions

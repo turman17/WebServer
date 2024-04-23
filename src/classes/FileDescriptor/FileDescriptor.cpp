@@ -91,7 +91,7 @@ void	FileDescriptor::setNonBlocking() const {
 bool		FileDescriptor::badFileDescriptor() const {
 
 	int flags = fcntl(m_fd, F_GETFL, 0);
-	if (!flags) {
+	if (!flags || !m_isOpen) {
 		return (true);
 	}
 	return (false);
