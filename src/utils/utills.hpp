@@ -6,6 +6,7 @@
 bool			startsWith(const std::string& toExpect, const std::string& text);
 unsigned int	countWords(const std::string& str);
 bool			isOnlySpaces(const std::string& str);
+std::string		normalizeHostname(const std::string& hostname);
 
 template<typename Iterator>
 Iterator std_next(const Iterator& it, int x = 1) {

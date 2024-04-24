@@ -38,3 +38,12 @@ bool isOnlySpaces(const std::string& str) {
 	}
 	return true;
 }
+
+
+std::string normalizeHostname(const std::string& hostname) {
+	if (hostname == "localhost" || hostname == "127.0.0.1") {
+		return "localhost";
+	}
+	return hostname;
+}
+

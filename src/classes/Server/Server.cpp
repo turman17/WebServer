@@ -23,7 +23,8 @@ void	Server::run() {
 					acceptNewConnection(newEvent);
 				}
 				else if (newEvent.isReadable()) {
-					std::exit(0);
+					
+					m_clientsMap[newEvent.fd()]->performRequest(m_serverBlocks, m_clientsMap);
 					break;
 				}
 				else if (newEvent.isWritable()) {
