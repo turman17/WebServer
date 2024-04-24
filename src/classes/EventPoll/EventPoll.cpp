@@ -78,10 +78,7 @@ void	EventPoll::mod(const FileDescriptor& fileDescriptor, uint32_t eventsToNotif
 */
 void	EventPoll::remove(const FileDescriptor& fileDescriptor) const {
 
-	if (epoll_ctl(m_fileDescriptor,
-		EPOLL_CTL_DEL, fileDescriptor, NULL) == -1) {
-			throw EventPollException("epoll_ctl(DEL) " + std::string (std::strerror(errno)));
-		}
+	epoll_ctl(m_fileDescriptor, EPOLL_CTL_DEL, fileDescriptor, NULL);
 	fileDescriptor.close();
 }
 

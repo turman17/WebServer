@@ -1,4 +1,5 @@
 #include "Clients.hpp"
+#include "../EventPoll/EventPoll.hpp"
 
 using namespace http;
 
@@ -12,31 +13,57 @@ void	Clients::addToFilesMap(const FileDescriptor& fd, HttpRequest* request) {
 }
 
 
-FdReqPair	Clients::delFromSocketMap(const FileDescriptor& fd) {
+HttpRequest*	Clients::delFromSocketMap(const FileDescriptor& fd) {
 
-	Iterator it = m_socketToRequestMap.find(fd);
+	http::Iterator it = m_socketToRequestMap.find(fd);
 	if (it == m_socketToRequestMap.end()) {
 		throw MapEntryNotFound();
 	}
-	FdReqPair pair = *it;
+	HttpRequest* request = it->second;
 	m_socketToRequestMap.erase(it);
-	return (pair);
+	return (request);
 }
 
 
-FdReqPair	Clients::delFromFilesMap(const FileDescriptor& fd) {
-	Iterator it = m_fileRequestedToRequestMap.find(fd);
+HttpRequest*	Clients::delFromFilesMap(const FileDescriptor& fd) {
+	http::Iterator it = m_fileRequestedToRequestMap.find(fd);
 	if (it == m_fileRequestedToRequestMap.end()) {
 		throw MapEntryNotFound();
 	}
-	FdReqPair pair = *it;
-	m_fileRequestedToRequestMap.erase(it);
-	return (pair);
+	HttpRequest* request = it->second;
+	m_socketToRequestMap.erase(it);
+	return (request);
+}
+
+void	Clients::removeClosedConnections(EventPoll& eventManager) {
+
+	http::FdReqMap::iterator it = m_fileRequestedToRequestMap.begin();
+	http::FdReqMap::iterator next;
+
+	while (it != m_fileRequestedToRequestMap.end()) {
+		next = std_next(it);
+		if (it->second->getRequestStatus() == http::CLOSED) {
+			eventManager.remove(it->first);
+			m_socketToRequestMap.erase(it);
+		}
+		it = next;
+	}
+
+	it = m_socketToRequestMap.begin();
+	while (it != m_socketToRequestMap.end()) {
+		next = std_next(it);
+		if (it->second->getRequestStatus() == http::CLOSED) {
+			eventManager.remove(it->first);
+			delete it->second;
+			m_socketToRequestMap.erase(it);
+		}
+		it = next;
+	}
 }
 
 
 bool		Clients::isSocket(const FileDescriptor& fd) {
-	Iterator it = m_socketToRequestMap.find(fd);
+	http::Iterator it = m_socketToRequestMap.find(fd);
 	if (it != m_socketToRequestMap.end()) {
 		return (true);
 	}
@@ -46,7 +73,7 @@ bool		Clients::isSocket(const FileDescriptor& fd) {
 
 HttpRequest*& Clients::operator[](const FileDescriptor& key) {
 
-	Iterator it = m_socketToRequestMap.find(key);
+	http::Iterator it = m_socketToRequestMap.find(key);
 	if (it != m_socketToRequestMap.end()) {
 		return (it->second);
 	}

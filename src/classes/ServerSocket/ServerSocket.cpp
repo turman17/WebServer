@@ -27,6 +27,7 @@ ServerSocket::ServerSocket(const std::string& hostname, const int& port)
 	}
 
 	try {
+		(void)hostname;
 		in_addr_t IpAddress = resolveHostname(hostname);
 		bindSocket(IpAddress, port);
 		setListeningState();

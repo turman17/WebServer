@@ -1,4 +1,5 @@
 #include "HTTPRequest.hpp"
+#include "../Clients/Clients.hpp"
 
 using namespace http;
 
@@ -28,13 +29,8 @@ bool	HttpRequest::readRequest() {
 	std::string*	firstLine(0);
 	char			gnlBuffer[gnl::BUFFER_SIZE + 1] = {0};
 
-	try {
-		firstLine = getNextLine(m_targetSocketFileDescriptor, gnlBuffer);
-		if (!firstLine) {
-			throw BadRead();
-		}
-	}
-	catch (const std::exception& e) {
+	firstLine = getNextLine(m_targetSocketFileDescriptor, gnlBuffer);
+	if (!firstLine) {
 		return (false);
 	}
 
@@ -46,29 +42,32 @@ bool	HttpRequest::readRequest() {
 				m_statusCode = NOT_IMPLEMENTED_501;
 				return (true);
 			}
-
-	std::string::iterator secondSpaceIt = std_next(firstSpaceIt,
-		firstLine->find_first_of(' '));
-	m_fileURI = std::string(std_next(firstSpaceIt), secondSpaceIt);
+	std::string::iterator secondSpaceIt = std::find(++firstSpaceIt, firstLine->end(), ' ');
+	m_fileURI = std::string(firstSpaceIt, secondSpaceIt);
 
 	delete(firstLine);
 
-	try {
-		bool flag = false;
-		for (std::string *tmp = getNextLine(m_targetSocketFileDescriptor, gnlBuffer); 
-			tmp; tmp = getNextLine(m_targetSocketFileDescriptor, gnlBuffer)) {
+	bool flag = false;
+	while (true) {
+		try {
+			std::string* tmp = getNextLine(m_targetSocketFileDescriptor, gnlBuffer);
+			if (!tmp) {
+				return (false);
+			}
 			if (!flag && startsWith("Host:", *tmp)) {
-				m_domain = std::string(std_next(tmp->begin(), 6), tmp->end());
+				m_domain = std::string(std_next(tmp->begin(), 6),
+					std_next(tmp->begin(), tmp->find_last_of(':')));
+				std::cout << "Domain: " << m_domain << std::endl;
 			}
 			if (flag)
 				m_messageBody += *tmp;
 			else if (*tmp == "\r\n")
-				flag = true;
+					flag = true;
 			delete(tmp);
 		}
-	}
-	catch (const std::exception& e) {
-		return (false);
+		catch (const std::exception& e) {
+			break;
+		}
 	}
 	return (true);
 }
@@ -80,61 +79,39 @@ bool	HttpRequest::readRequest() {
  * @return If everything goes well returns true and in case of an error returns false
  * 
 */
-bool	HttpRequest::performRequest(const std::vector<ServerBlock>& serverBlocks, Clients& clients) {
+RequestStatus	HttpRequest::performReadOperations(
+		const std::vector<ServerBlock>& serverBlocks, Clients& clients) {
 
 	if (m_requestStatus == REQUEST_RECEIVED) {
 		if (!readRequest()) {
-			throw CloseConnection();
+			std::cout << "Failed to read request" << std::endl;
+			return (http::CLOSED);
+		}
+		if (m_statusCode == NOT_IMPLEMENTED_501) {
+			return (http::NOT_IMPLEMENTED);
 		}
 		assignSettings(serverBlocks);
-		int fd = findFile();
-		if (fd != -1) {
-			clients.addToFilesMap(fd, this);
-			m_requestStatus = REQUEST_READ;
+		FileDescriptor fd = findFile();
+		if (fd == -1) {
+			m_statusCode = NOT_FOUND_404;
+			return (http::FILE_NOT_FOUND);
+		}
+		clients.addToFilesMap(fd, this);
+		return (http::FILE_FOUND);
+	}
+	else if (m_requestStatus == FILE_FOUND) {
+		if (static_cast<int>(m_messageBody.length()) > m_maxBodySize) {
+			m_statusCode = CONTENT_TOO_LARGE_413;
+		}
+		else if (m_statusCode == NOT_FOUND_404 || m_statusCode == NOT_IMPLEMENTED_501) {
+			;
 		}
 		else {
-			m_requestStatus = FILE_NOT_FOUND;
+			;
 		}
 	}
-	else if (m_requestStatus == REQUEST_READ) {
-		if (m_messageBody.length() > m_maxBodySize) {
-			//* Set error body too big
-		}
-	}
+	return CLOSED;
 
-
-
-
-
-
-
-
-	// std::stringstream	tmp;
-
-	// m_messageBody = "<!DOCTYPE html>\r\n"
-	// 				"<html>\r\n"
-	// 				"<head>\r\n"
-	// 					"<title>Test Page</title>\r\n"
-	// 				"</head>\r\n"
-	// 				"<body>\r\n"
-	// 					"<h1>Hello, World!</h1>\r\n"
-	// 				"</body>\r\n"
-	// 				"</html>\r\n";
-	
-	// tmp << m_messageBody.length();
-
-	// m_contentLength = tmp.str();
-
-	// m_response +=	"HTTP/1.1 200 OK\r\n"
-	// 				"Content-Type: text/html\r\n"
-	// 				"Content-Length: " + m_contentLength + "\r\n"
-	// 				"\r\n";
-
-	// m_response += m_messageBody;
-	
-	// //? Connection: close
-
-	// return (true);
 }
 
 
@@ -186,14 +163,9 @@ FileDescriptor	HttpRequest::findFile() {
 
 	std::string	file = m_settings.getRoot() + m_fileURI;
 
-	int	fd = open(file.c_str(), O_RDONLY);
-	if (fd == -1) {
-		m_statusCode = NOT_FOUND_404;
-	}
-	return (fd);
+	std::cout << "File Path: " << file << std::endl;
+	return (open(file.c_str(), O_RDONLY));
 }
-
-
 
 
 /**
@@ -202,10 +174,33 @@ FileDescriptor	HttpRequest::findFile() {
  * @return If everything goes well returns true and in case of an error returns false
  * 
 */
-bool	HttpRequest::sendResponse() {
+RequestStatus	HttpRequest::sendResponse() {
 
+	std::stringstream	tmp;
+
+	m_messageBody = "<!DOCTYPE html>\r\n"
+					"<html>\r\n"
+					"<head>\r\n"
+						"<title>Test Page</title>\r\n"
+					"</head>\r\n"
+					"<body>\r\n"
+						"<h1>Hello, World!</h1>\r\n"
+					"</body>\r\n"
+					"</html>\r\n";
+	
+	tmp << m_messageBody.length();
+
+	m_contentLength = tmp.str();
+
+	m_response +=	"HTTP/1.1 200 OK\r\n"
+					"Content-Type: text/html\r\n"
+					"Content-Length: " + m_contentLength + "\r\n"
+					"\r\n";
+
+	m_response += m_messageBody;
+	
 	write(m_targetSocketFileDescriptor, m_response.c_str(), m_response.length());
-	return (true);
+	return (RESPONSE_SENT);
 }
 
 
@@ -224,7 +219,18 @@ void	HttpRequest::setDomain(const std::string& domain) {
 }
 
 
+void	HttpRequest::setRequestStatus(const http::RequestStatus& status) {
+
+	m_requestStatus = status;
+}
+
+const RequestStatus&	HttpRequest::getRequestStatus() {
+	
+	return (m_requestStatus);
+}
+
+
 const char* HttpRequest::CloseConnection::what() const throw() {
 
-	return ("Close connection ASAP");
+	return ("Close active connection ASAP");
 }

@@ -49,7 +49,7 @@ private:
 			const std::string	m_errorMessage;
 	};
 
-	class NoMoreNewEvents {
+	class NoMoreNewEvents : public std::exception {
 		public:
 			const char* what() const throw();
 	};

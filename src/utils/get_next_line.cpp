@@ -18,9 +18,11 @@ std::string*	getNextLine(const FileDescriptor& fd, char buffer[gnl::BUFFER_SIZE 
 	{
 		if (buffer[0] == '\0')
 		{
-			bytesRead = read(fd, buffer, gnl::BUFFER_SIZE);
-			if (bytesRead == -1)
-				free_line(line); 
+			bytesRead = recv(fd, buffer, gnl::BUFFER_SIZE, MSG_DONTWAIT);
+			if (bytesRead == -1) {
+				free_line(line);
+				throw BadRead();
+			}
 			else if (bytesRead == 0)
 				return (line);
 		}
@@ -34,8 +36,7 @@ std::string*	getNextLine(const FileDescriptor& fd, char buffer[gnl::BUFFER_SIZE 
 static void	free_line(std::string *line)
 {
 	if (line)
-		free(line);
-	throw BadRead();
+		delete(line);
 }
 
 static int	line_updater(std::string*& line, char buffer[])

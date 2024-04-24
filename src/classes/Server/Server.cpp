@@ -6,14 +6,14 @@ Server::~Server() {
 	//! DELETE SERVER SOCKETS
 }
 
-
 void	Server::run() {
-	Event	newEvent;
+	Event				newEvent;
+	http::RequestStatus	status;
+	http::HttpRequest	*activeRequest;
 
 	setupListeningSockets();
 	setupEpoll();
 	while (true) {
-
 		m_eventsManager.waitForEvents();
 		while (NEW_EVENTS) {
 			try {
@@ -23,15 +23,28 @@ void	Server::run() {
 					acceptNewConnection(newEvent);
 				}
 				else if (newEvent.isReadable()) {
-					
-					m_clientsMap[newEvent.fd()]->performRequest(m_serverBlocks, m_clientsMap);
-					break;
+					activeRequest = m_clientsMap[newEvent.fd()];
+					status = activeRequest->performReadOperations(m_serverBlocks,
+																m_clientsMap);
+					if (status == http::CLOSED)
+						;
+					else if (status == http::FILE_READ)
+						m_eventsManager.remove(newEvent.fd());
+					else
+						m_eventsManager.mod(newEvent.fd(), WRITE_OPERATIONS);
+					activeRequest->setRequestStatus(status);
 				}
 				else if (newEvent.isWritable()) {
-					break;
+					activeRequest = m_clientsMap[newEvent.fd()];
+					status = activeRequest->sendResponse();
+					if (status == http::RESPONSE_SENT) {
+						activeRequest->setRequestStatus(http::CLOSED);
+					}
+					//break;
 				}
 			}
-			catch (...) {
+			catch (const std::exception& exception) {
+				m_clientsMap.removeClosedConnections(m_eventsManager);
 				break;
 			}
 		}
@@ -44,9 +57,9 @@ void	Server::acceptNewConnection(const Event& event) {
 	FileDescriptor	newConnectionFd;
 
 	newConnectionFd = accept(event.fd(), NULL, NULL);
-	newConnectionFd.setNonBlocking();
+	//newConnectionFd.setNonBlocking();
 
-	HttpRequest* newRequest = new HttpRequest(newConnectionFd);
+	http::HttpRequest* newRequest = new http::HttpRequest(newConnectionFd);
 	newRequest->setPort(event.getPort());
 	newRequest->setHostname(event.getHostname());
 	m_clientsMap.addToSocketMap(newConnectionFd, newRequest);
@@ -213,9 +226,15 @@ void	Server::setupListeningSockets() {
 
 	for (std::vector<ServerBlock>::iterator current = m_serverBlocks.begin();
 		current != m_serverBlocks.end(); std::advance(current, 1)) {
-			ServerSocket	newSocket((*current).getHostname(), (*current).getPort());
-			if (newSocket.isOpen()) {
-				m_listeningSockets.push_back(newSocket);
+			try {
+				ServerSocket	newSocket((*current).getHostname(), (*current).getPort());
+				if (newSocket.isOpen()) {
+					std::cout << "Listening on " << (*current).getHostname() << ":" << (*current).getPort() << std::endl;
+					m_listeningSockets.push_back(newSocket);
+				}
+			}
+			catch (const std::exception& exception) {
+				std::cerr << "Error creating socket: " << exception.what() << std::endl;
 			}
 		}
 }
