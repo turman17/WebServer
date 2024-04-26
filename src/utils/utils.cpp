@@ -10,14 +10,12 @@ void	fatalError(int _errno, void (*atExit)(void *), void* trash) {
 
 bool	startsWith(const std::string& toExpect, const std::string& text) {
 
-	std::stringstream	tmpsStream(text);
-	std::string			tmp;
-
-	tmpsStream >> tmp;
-	if (tmp != toExpect) {
-		return false;
+	int start = 0;
+	while (std::isspace(text[start])) {
+		start++;
 	}
-	return true;
+	return (toExpect.length() > text.length() ?
+		false : text.substr(start, toExpect.length()) == toExpect);
 }
 
 unsigned int countWords(const std::string& str)
@@ -47,3 +45,24 @@ std::string normalizeHostname(const std::string& hostname) {
 	return hostname;
 }
 
+
+void	ifstreamToString(std::ifstream& source, std::string& destination) {
+
+	destination.assign(std::istreambuf_iterator<char>(source), std::istreambuf_iterator<char>());
+}
+
+
+bool	isFile(const std::string& filename) {
+
+	struct stat buffer;
+	return (stat(filename.c_str(), &buffer) == 0);
+}
+
+
+bool isDirectory(const std::string& filename) {
+	struct stat buffer;
+	if (stat(filename.c_str(), &buffer) != 0) {
+		return false;
+	}
+	return S_ISDIR(buffer.st_mode);
+}

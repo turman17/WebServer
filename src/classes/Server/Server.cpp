@@ -21,29 +21,23 @@ void	Server::run() {
 				std::cout << "New event on fd: " << newEvent.fd() << std::endl;
 				if (newEvent.isNewConnection(m_listeningSockets)) {
 					acceptNewConnection(newEvent);
-				}
-				else if (newEvent.isReadable()) {
+				} else if (newEvent.isReadable()) {
 					activeRequest = m_clientsMap[newEvent.fd()];
-					status = activeRequest->performReadOperations(m_serverBlocks,
-																m_clientsMap);
-					if (status == http::CLOSED)
-						;
-					else if (status == http::FILE_READ)
-						m_eventsManager.remove(newEvent.fd());
-					else
-						m_eventsManager.mod(newEvent.fd(), WRITE_OPERATIONS);
+					status = activeRequest->performReadOperations(m_serverBlocks);
 					activeRequest->setRequestStatus(status);
-				}
-				else if (newEvent.isWritable()) {
+					m_eventsManager.mod(newEvent.fd(), WRITE_OPERATIONS);
+				} else if (newEvent.isWritable()) {
+					sleep(1);
+					std::cout << "Sending response if possible" << std::endl;
 					activeRequest = m_clientsMap[newEvent.fd()];
 					status = activeRequest->sendResponse();
 					if (status == http::RESPONSE_SENT) {
 						activeRequest->setRequestStatus(http::CLOSED);
 					}
-					//break;
 				}
 			}
 			catch (const std::exception& exception) {
+				std::cerr << exception.what() << std::endl;
 				m_clientsMap.removeClosedConnections(m_eventsManager);
 				break;
 			}
@@ -57,7 +51,7 @@ void	Server::acceptNewConnection(const Event& event) {
 	FileDescriptor	newConnectionFd;
 
 	newConnectionFd = accept(event.fd(), NULL, NULL);
-	//newConnectionFd.setNonBlocking();
+	newConnectionFd.setNonBlocking();
 
 	http::HttpRequest* newRequest = new http::HttpRequest(newConnectionFd);
 	newRequest->setPort(event.getPort());
@@ -87,6 +81,7 @@ void	Server::loadConfig(const char* filename) {
 				}
 				if (startsWith(std::string("location"), line)) {
 					LocationBlock 		newLocationBlock;
+					newLocationBlock.setRoot(newServerBlock.getRoot());
 					std::stringstream	tmpStream(line);
 					std::string			tmpStr;
 
@@ -154,7 +149,8 @@ void	Server::assignServerBlockSetting(const std::string& line, ServerBlock& serv
 		valueStream >> tmp;
 		if (valueStream.fail())
 			throw BadConfig();
-		serverBlock.addErrorPage(errorCode, tmp);
+		if (isFile(tmp))
+			serverBlock.addErrorPage(errorCode, tmp);
 	}
 	else if (directive == "client_max_body_size") {
 		valueStream >> tmp;
@@ -163,6 +159,7 @@ void	Server::assignServerBlockSetting(const std::string& line, ServerBlock& serv
 		serverBlock.setMaxBodySize(std::atoi(tmp.c_str()));
 	}
 	else {
+		std::cout << directive << std::endl;
 		throw UnknownDirective();
 	}
 }
@@ -188,7 +185,7 @@ void	Server::assignLocationBlockSetting(const std::string& line, LocationBlock& 
 		valueStream >> tmp;
 		if (valueStream.fail())
 			throw BadConfig();
-		locationBlock.setRoot(tmp);
+		locationBlock.setIndexFile(tmp);
 	}
 	else if (directive == "return") {
 		std::string statusCode;

@@ -4,9 +4,12 @@
 using namespace http;
 
 HttpRequest::HttpRequest(const FileDescriptor& targetSocketFileDescriptor) :
+	m_domain(""),
 	m_requestMethod(""),
 	m_fileURI(""),
-	m_messageBody(""),
+	m_queryString(""),
+	m_requestBody(""),
+	m_responseBody (""),
 	m_contentType(""),
 	m_contentLength(""), 
 	m_response(""),
@@ -34,16 +37,24 @@ bool	HttpRequest::readRequest() {
 		return (false);
 	}
 
-	std::string::iterator firstSpaceIt = std_next(firstLine->begin(),
+	std::string::iterator firstSpace = std_next(firstLine->begin(),
 		firstLine->find_first_of(' '));
-	m_requestMethod = std::string(firstLine->begin(), firstSpaceIt);
+	m_requestMethod = std::string(firstLine->begin(), firstSpace);
 	if (m_requestMethod != "GET" && m_requestMethod != "POST" 
 			&& m_requestMethod != "DELETE") {
 				m_statusCode = NOT_IMPLEMENTED_501;
 				return (true);
 			}
-	std::string::iterator secondSpaceIt = std::find(++firstSpaceIt, firstLine->end(), ' ');
-	m_fileURI = std::string(firstSpaceIt, secondSpaceIt);
+
+	std::string::iterator questionMark = std::find(std_next(firstSpace), firstLine->end(), '?');
+	std::string::iterator secondSpace = std::find(std_next(firstSpace), firstLine->end(), ' ');
+
+	if (questionMark != firstLine->end()) {
+		m_fileURI = std::string(std_next(firstSpace), questionMark);
+		m_queryString = std::string(std_next(questionMark), secondSpace);
+	} else {
+		m_fileURI = std::string(firstSpace, secondSpace);
+	}
 
 	delete(firstLine);
 
@@ -57,10 +68,9 @@ bool	HttpRequest::readRequest() {
 			if (!flag && startsWith("Host:", *tmp)) {
 				m_domain = std::string(std_next(tmp->begin(), 6),
 					std_next(tmp->begin(), tmp->find_last_of(':')));
-				std::cout << "Domain: " << m_domain << std::endl;
 			}
 			if (flag)
-				m_messageBody += *tmp;
+				m_requestBody += *tmp;
 			else if (*tmp == "\r\n")
 					flag = true;
 			delete(tmp);
@@ -79,39 +89,42 @@ bool	HttpRequest::readRequest() {
  * @return If everything goes well returns true and in case of an error returns false
  * 
 */
-RequestStatus	HttpRequest::performReadOperations(
-		const std::vector<ServerBlock>& serverBlocks, Clients& clients) {
+RequestStatus	HttpRequest::performReadOperations(const std::vector<ServerBlock>& serverBlocks) {
+
 
 	if (m_requestStatus == REQUEST_RECEIVED) {
 		if (!readRequest()) {
-			std::cout << "Failed to read request" << std::endl;
 			return (http::CLOSED);
-		}
-		if (m_statusCode == NOT_IMPLEMENTED_501) {
-			return (http::NOT_IMPLEMENTED);
+		} else if (m_statusCode == NOT_IMPLEMENTED_501) {
+			buildErrorPage(NOT_IMPLEMENTED_501);
+			return (http::ERROR);
 		}
 		assignSettings(serverBlocks);
-		FileDescriptor fd = findFile();
-		if (fd == -1) {
-			m_statusCode = NOT_FOUND_404;
-			return (http::FILE_NOT_FOUND);
-		}
-		clients.addToFilesMap(fd, this);
-		return (http::FILE_FOUND);
-	}
-	else if (m_requestStatus == FILE_FOUND) {
-		if (static_cast<int>(m_messageBody.length()) > m_maxBodySize) {
-			m_statusCode = CONTENT_TOO_LARGE_413;
-		}
-		else if (m_statusCode == NOT_FOUND_404 || m_statusCode == NOT_IMPLEMENTED_501) {
-			;
-		}
-		else {
-			;
+		StrVector allowedMethods = m_settings.getAllowedMethods();
+		if (static_cast<int>(m_requestBody.length()) > m_maxBodySize) {
+			buildErrorPage(CONTENT_TOO_LARGE_413);
+			return (http::ERROR);
+		} else if (std::find(allowedMethods.begin(), allowedMethods.end(),
+			m_requestMethod) == allowedMethods.end()) {
+				buildErrorPage(http::FORBIDDEN_403);
+				return (http::ERROR);
+			}
+		if (m_requestMethod == "GET") {
+			const char* file = (m_settings.getRoot() + m_fileURI).c_str();
+			if (isDirectory(file)) {
+				file = (m_settings.getRoot() + m_settings.getIndexFile()).c_str();
+			}
+			std::ifstream requestedFile(file);
+			if (requestedFile.fail()) {
+				buildErrorPage(NOT_FOUND_404);
+				return (http::ERROR);
+			}
+			ifstreamToString(requestedFile, m_responseBody);
+			requestedFile.close();
+			return (http::FILE_READ);
 		}
 	}
 	return CLOSED;
-
 }
 
 
@@ -159,12 +172,38 @@ void	HttpRequest::assignSettings(const std::vector<ServerBlock>& serverBlocks) {
 }
 
 
-FileDescriptor	HttpRequest::findFile() {
+void	HttpRequest::buildErrorPage(const std::string& errorCode) {
 
-	std::string	file = m_settings.getRoot() + m_fileURI;
+	std::ifstream errorFile((m_errorPages[errorCode]).c_str());
+	
+	ifstreamToString(errorFile, m_responseBody);
+	errorFile.close();
+	m_statusCode = errorCode;
+}
 
-	std::cout << "File Path: " << file << std::endl;
-	return (open(file.c_str(), O_RDONLY));
+
+std::string	HttpRequest::expandStatusCode() {
+
+	std::string	expandedCode;
+	if (m_statusCode == "404") {
+		expandedCode = "404 Not Found";
+	}
+	else if (m_statusCode == "413") {
+		expandedCode = "413 Request Entity Too Large";
+	}
+	else if (m_statusCode == "501") {
+		expandedCode = "501 Not Implemented";
+	}
+	else if (m_statusCode == "500") {
+		expandedCode = "500 Internal Server Error";
+	}
+	else if (m_statusCode == "200") {
+		expandedCode = "200 OK";
+	}
+	else if (m_statusCode == "302") {
+		expandedCode = "302 Found";
+	}
+	return (expandedCode);
 }
 
 
@@ -177,27 +216,19 @@ FileDescriptor	HttpRequest::findFile() {
 RequestStatus	HttpRequest::sendResponse() {
 
 	std::stringstream	tmp;
-
-	m_messageBody = "<!DOCTYPE html>\r\n"
-					"<html>\r\n"
-					"<head>\r\n"
-						"<title>Test Page</title>\r\n"
-					"</head>\r\n"
-					"<body>\r\n"
-						"<h1>Hello, World!</h1>\r\n"
-					"</body>\r\n"
-					"</html>\r\n";
 	
-	tmp << m_messageBody.length();
+	tmp << m_responseBody.length();
 
 	m_contentLength = tmp.str();
 
-	m_response +=	"HTTP/1.1 200 OK\r\n"
+	m_response +=	"HTTP/1.1 " + m_statusCode + "\r\n"
 					"Content-Type: text/html\r\n"
 					"Content-Length: " + m_contentLength + "\r\n"
 					"\r\n";
 
-	m_response += m_messageBody;
+	m_response += m_responseBody;
+
+	std::cout << m_response << std::endl;
 	
 	write(m_targetSocketFileDescriptor, m_response.c_str(), m_response.length());
 	return (RESPONSE_SENT);

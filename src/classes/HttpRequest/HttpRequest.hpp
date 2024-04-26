@@ -10,17 +10,18 @@ class Clients;
 
 namespace http {
 
-	const char OK_200[] = "200 OK";
-	const char REDIRECT_302[] = "302 Redirect";
-	const char NOT_FOUND_404[] = "404 Not Found";
-	const char NOT_IMPLEMENTED_501[] = "501 Not Implemented";
-	const char CONTENT_TOO_LARGE_413[] = "413 Content Too Large";
+	const char OK_200[] = "200";
+	const char REDIRECT_302[] = "302";
+	const char NOT_FOUND_404[] = "404";
+	const char NOT_IMPLEMENTED_501[] = "501";
+	const char CONTENT_TOO_LARGE_413[] = "413";
+	const char INTERNAL_ERROR_500[] = "500";
+	const char FORBIDDEN_403[] = "403";
 
 	enum RequestStatus {
 		REQUEST_RECEIVED,
 		FILE_FOUND,
-		FILE_NOT_FOUND,
-		NOT_IMPLEMENTED,
+		ERROR,
 		FILE_READ,
 		RESPONSE_READY,
 		RESPONSE_SENT,
@@ -33,10 +34,8 @@ namespace http {
 								HttpRequest(const FileDescriptor& targetSocketFileDescriptor);
 								~HttpRequest();
 		bool					readRequest();
-		http::RequestStatus		performReadOperations(const std::vector<ServerBlock>& serverBlocks,
-									Clients& clients);
+		http::RequestStatus		performReadOperations(const std::vector<ServerBlock>& serverBlocks);
 		RequestStatus			sendResponse();
-		FileDescriptor			findFile();
 		void					assignSettings(const std::vector<ServerBlock>& serverBlocks);
 		void					setHostname(const std::string& hostname);
 		void					setPort(const int& port);
@@ -49,7 +48,9 @@ namespace http {
 		std::string							m_domain;
 		std::string							m_requestMethod;
 		std::string							m_fileURI;
-		std::string							m_messageBody;
+		std::string							m_queryString;
+		std::string							m_requestBody;
+		std::string							m_responseBody;
 		std::string							m_contentType;
 		std::string							m_contentLength;
 		std::string							m_response;
@@ -63,6 +64,8 @@ namespace http {
 		
 		//* Private methods
 		HttpRequest();
+		void		buildErrorPage(const std::string& errorCode);
+		std::string	expandStatusCode();
 
 		//* Exceptions
 

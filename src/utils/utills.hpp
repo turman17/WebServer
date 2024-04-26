@@ -3,10 +3,15 @@
 
 # include <exception>
 
+class FileDescriptor;
+
 bool			startsWith(const std::string& toExpect, const std::string& text);
 unsigned int	countWords(const std::string& str);
 bool			isOnlySpaces(const std::string& str);
 std::string		normalizeHostname(const std::string& hostname);
+void			ifstreamToString(std::ifstream& source, std::string& destination);
+bool			isFile(const std::string& filename);
+bool			isDirectory(const std::string& filename);
 
 template<typename Iterator>
 Iterator std_next(const Iterator& it, int x = 1) {

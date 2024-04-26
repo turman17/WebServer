@@ -24,9 +24,11 @@
 # include <fcntl.h>
 # include <sys/types.h>
 # include <netdb.h>
+# include <sys/stat.h>
 
 # include "../src/utils/CircularBuffer.hpp"
 # include "../src/utils/utills.hpp"
+# include "../src/classes/FileDescriptor/FileDescriptor.hpp"
 
 typedef std::pair<std::string, std::string> StrPair;
 typedef std::vector<std::string>			StrVector;
@@ -35,8 +37,6 @@ typedef std::vector<std::string>			StrVector;
 namespace gnl {
 	const int BUFFER_SIZE = 1024;
 }
-
-class FileDescriptor;
 
 void					fatalError(int _errno, void (*atExit)(void *) = NULL, 
 							void* trash = NULL);
