@@ -4,6 +4,10 @@ Server::Server() {}
 
 Server::~Server() {}
 
+
+/**
+ * @brief Server Core
+*/
 void	Server::run() {
 	Event				newEvent;
 	http::RequestStatus	status;
@@ -16,7 +20,7 @@ void	Server::run() {
 		while (NEW_EVENTS) {
 			try {
 				newEvent = m_eventsManager.getNextEvent();
-				std::cout << "New event on fd: " << newEvent.fd() << std::endl;
+				std::cout << "\nNew event on fd: " << newEvent.fd() << std::endl;
 				if (newEvent.isNewConnection(m_listeningSockets)) {
 					acceptNewConnection(newEvent);
 				} else if (newEvent.isReadable()) {
@@ -25,7 +29,6 @@ void	Server::run() {
 					activeRequest->setRequestStatus(status);
 					m_eventsManager.mod(newEvent.fd(), WRITE_OPERATIONS);
 				} else if (newEvent.isWritable()) {
-					std::cout << "Sending response if possible" << std::endl;
 					activeRequest = m_clientsMap[newEvent.fd()];
 					status = activeRequest->sendResponse();
 					if (status == http::RESPONSE_SENT) {
@@ -34,7 +37,6 @@ void	Server::run() {
 				}
 			}
 			catch (const std::exception& exception) {
-				std::cerr << exception.what() << std::endl;
 				m_clientsMap.removeClosedConnections(m_eventsManager);
 				break;
 			}
@@ -43,6 +45,11 @@ void	Server::run() {
 }
 
 
+/**
+ * @brief Accepts a new connection
+ * 
+ * @param event The event containing the file descriptor that triggered the new connection
+*/
 void	Server::acceptNewConnection(const Event& event) {
 
 	FileDescriptor	newConnectionFd;
@@ -57,7 +64,49 @@ void	Server::acceptNewConnection(const Event& event) {
 	m_eventsManager.add(newConnectionFd, READ_OPERATIONS);
 }
 
+//* Setup
 
+
+/**
+ * @brief Sets up the listening sockets by creating them and adding them to the listening sockets vector
+*/
+void	Server::setupListeningSockets() {
+
+	for (std::vector<ServerBlock>::iterator current = m_serverBlocks.begin();
+		current != m_serverBlocks.end(); std::advance(current, 1)) {
+			try {
+				ServerSocket	newSocket((*current).getHostname(), (*current).getPort());
+				if (newSocket.isOpen()) {
+					std::cout << "Listening on " << (*current).getHostname() << ":" << (*current).getPort() << std::endl;
+					m_listeningSockets.push_back(newSocket);
+				}
+			}
+			catch (const std::exception& exception) {
+				std::cerr << "Error creating socket: " << exception.what() << std::endl;
+			}
+		}
+}
+
+
+/**
+ * @brief Sets up the epoll event manager by adding the listening sockets
+*/
+void Server::setupEpoll() {
+
+	for (std::vector<ServerSocket>::iterator current = m_listeningSockets.begin();
+		current != m_listeningSockets.end(); std::advance(current, 1)) {
+			m_eventsManager.add((*current).getFileDescriptor(), READ_OPERATIONS);
+		}
+}
+
+
+//* Parsing
+
+/**
+ * @brief Loads the server configuration from a file
+ * 
+ * @param filename The name of the file to load the configuration from
+*/
 void	Server::loadConfig(const char* filename) {
 
 	std::ifstream						configFile(filename);
@@ -106,6 +155,13 @@ void	Server::loadConfig(const char* filename) {
 	}
 }
 
+
+/**
+ * @brief Assigns the server block settings
+ * 
+ * @param line The line to parse
+ * @param serverBlock The server block to assign the settings to
+*/
 void	Server::assignServerBlockSetting(const std::string& line, ServerBlock& serverBlock) {
 
 	std::stringstream	lineStream(line);
@@ -165,6 +221,13 @@ void	Server::assignServerBlockSetting(const std::string& line, ServerBlock& serv
 	}
 }
 
+
+/**
+ * @brief Assigns the location block settings
+ * 
+ * @param line The line to parse
+ * @param locationBlock The location block to assign the settings to
+*/
 void	Server::assignLocationBlockSetting(const std::string& line, LocationBlock& locationBlock) {
 
 	std::stringstream	lineStream(line);
@@ -220,32 +283,8 @@ void	Server::assignLocationBlockSetting(const std::string& line, LocationBlock& 
 	}
 }
 
-void	Server::setupListeningSockets() {
 
-	for (std::vector<ServerBlock>::iterator current = m_serverBlocks.begin();
-		current != m_serverBlocks.end(); std::advance(current, 1)) {
-			try {
-				ServerSocket	newSocket((*current).getHostname(), (*current).getPort());
-				if (newSocket.isOpen()) {
-					std::cout << "Listening on " << (*current).getHostname() << ":" << (*current).getPort() << std::endl;
-					m_listeningSockets.push_back(newSocket);
-				}
-			}
-			catch (const std::exception& exception) {
-				std::cerr << "Error creating socket: " << exception.what() << std::endl;
-			}
-		}
-}
-
-
-void Server::setupEpoll() {
-
-	for (std::vector<ServerSocket>::iterator current = m_listeningSockets.begin();
-		current != m_listeningSockets.end(); std::advance(current, 1)) {
-			m_eventsManager.add((*current).getFileDescriptor(), READ_OPERATIONS);
-		}
-}
-
+//* Exceptions
 
 const char* Server::BadOpenFile::what() const throw() {
 	
@@ -263,6 +302,11 @@ const char* Server::BadConfig::what() const throw() {
 }
 
 
+//* Debugging
+
+/**
+ * @brief Prints the server settings
+*/
 void	Server::printSettings() {
 	
 	std::cout << "Printing settings" << std::endl;

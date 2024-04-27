@@ -25,6 +25,7 @@
 # include <sys/types.h>
 # include <netdb.h>
 # include <sys/stat.h>
+# include <dirent.h>
 
 # include "../src/utils/CircularBuffer.hpp"
 # include "../src/utils/utills.hpp"

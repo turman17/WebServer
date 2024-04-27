@@ -55,7 +55,7 @@ void	ifstreamToString(std::ifstream& source, std::string& destination) {
 bool	isFile(const std::string& filename) {
 
 	struct stat buffer;
-	return (stat(filename.c_str(), &buffer) == 0);
+	return (stat(filename.c_str(), &buffer) == 0 && !S_ISDIR(buffer.st_mode));
 }
 
 
@@ -65,4 +65,23 @@ bool isDirectory(const std::string& filename) {
 		return false;
 	}
 	return S_ISDIR(buffer.st_mode);
+}
+
+
+std::string	basicHtml(const std::string& title, const std::string& body) {
+
+	return (
+		"<!DOCTYPE html lan=\"en\">\n"
+		"<html>\n"
+		"<head>\n"
+			"\t<title>" + title + "</title>\n"
+			"\t<style>\n"
+				"\t\tbody {font-family: Arial, Helvetica, sans-serif; font-size: 16px;}\n"
+			"\t</style>\n"
+		"</head>\n"
+		"<body>\n"
+			+ body +
+		"</body>\n"
+		"</html>\n"
+		);
 }

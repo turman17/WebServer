@@ -48,7 +48,8 @@ namespace http {
 		std::string							m_domain;
 		std::string							m_version;
 		std::string							m_requestMethod;
-		std::string							m_fileURI;
+		std::string							m_URL;
+		std::string							m_filePath;
 		std::string							m_queryString;
 		std::string							m_requestBody;
 		std::string							m_responseBody;
@@ -69,6 +70,7 @@ namespace http {
 		std::string	expandStatusCode();
 		std::string	expandContentType();
 		std::string	expandContentLength();
+		bool		performDirectoryListing();
 
 		//* Exceptions
 
