@@ -5,6 +5,7 @@ using namespace http;
 
 HttpRequest::HttpRequest(const FileDescriptor& targetSocketFileDescriptor) :
 	m_domain(""),
+	m_version("HTTP/1.1"),
 	m_requestMethod(""),
 	m_fileURI(""),
 	m_queryString(""),
@@ -14,6 +15,7 @@ HttpRequest::HttpRequest(const FileDescriptor& targetSocketFileDescriptor) :
 	m_contentLength(""), 
 	m_response(""),
 	m_statusCode(""),
+	m_maxBodySize(1024),
 	m_requestStatus(REQUEST_RECEIVED),
 	m_targetSocketFileDescriptor(targetSocketFileDescriptor) {}
 
@@ -45,17 +47,15 @@ bool	HttpRequest::readRequest() {
 				m_statusCode = NOT_IMPLEMENTED_501;
 				return (true);
 			}
-
+	
 	std::string::iterator questionMark = std::find(std_next(firstSpace), firstLine->end(), '?');
 	std::string::iterator secondSpace = std::find(std_next(firstSpace), firstLine->end(), ' ');
-
 	if (questionMark != firstLine->end()) {
 		m_fileURI = std::string(std_next(firstSpace), questionMark);
 		m_queryString = std::string(std_next(questionMark), secondSpace);
 	} else {
-		m_fileURI = std::string(firstSpace, secondSpace);
+		m_fileURI = std::string(std_next(firstSpace), secondSpace);
 	}
-
 	delete(firstLine);
 
 	bool flag = false;
@@ -110,11 +110,11 @@ RequestStatus	HttpRequest::performReadOperations(const std::vector<ServerBlock>&
 				return (http::ERROR);
 			}
 		if (m_requestMethod == "GET") {
-			const char* file = (m_settings.getRoot() + m_fileURI).c_str();
-			if (isDirectory(file)) {
-				file = (m_settings.getRoot() + m_settings.getIndexFile()).c_str();
+			m_fileURI = m_settings.getRoot() + m_fileURI;
+			if (isDirectory(m_fileURI)) {
+				m_fileURI += m_settings.getIndexFile();
 			}
-			std::ifstream requestedFile(file);
+			std::ifstream requestedFile(m_fileURI.c_str());
 			if (requestedFile.fail()) {
 				buildErrorPage(NOT_FOUND_404);
 				return (http::ERROR);
@@ -176,6 +176,7 @@ void	HttpRequest::buildErrorPage(const std::string& errorCode) {
 
 	std::ifstream errorFile((m_errorPages[errorCode]).c_str());
 	
+	m_fileURI = m_errorPages[errorCode];
 	ifstreamToString(errorFile, m_responseBody);
 	errorFile.close();
 	m_statusCode = errorCode;
@@ -207,6 +208,70 @@ std::string	HttpRequest::expandStatusCode() {
 }
 
 
+std::string	HttpRequest::expandContentType() {
+
+	std::string			expandedType;
+	std::string			fileExtension;
+
+	std::string::size_type dot = m_fileURI.find_last_of('.');
+	std::cout << m_fileURI << std::endl;
+	std::cout << dot << std::endl;
+	if (dot != std::string::npos) {
+		fileExtension = m_fileURI.substr(dot + 1);
+	}
+	if (fileExtension == "html" || fileExtension == "htm") {
+		expandedType = "text/html";
+	}
+	else if (fileExtension == "css") {
+		expandedType = "text/css";
+	}
+	else if (fileExtension == "js") {
+		expandedType = "text/javascript";
+	}
+	else if (fileExtension == "jpeg" || fileExtension == "jpg") {
+		expandedType = "image/jpeg";
+	}
+	else if (fileExtension == "png") {
+		expandedType = "image/png";
+	}
+	else if (fileExtension == "gif") {
+		expandedType = "image/gif";
+	}
+	else if (fileExtension == "bmp") {
+		expandedType = "image/bmp";
+	}
+	else if (fileExtension == "ico") {
+		expandedType = "image/x-icon";
+	}
+	else if (fileExtension == "svg") {
+		expandedType = "image/svg+xml";
+	}
+	else if (fileExtension == "json") {
+		expandedType = "application/json";
+	}
+	else if (fileExtension == "pdf") {
+		expandedType = "application/pdf";
+	}
+	else if (fileExtension == "txt") {
+		expandedType = "text/plain";
+	}
+	else {
+		expandedType = "application/octet-stream";
+	}
+	return (expandedType);
+}
+
+
+std::string HttpRequest::expandContentLength() {
+
+	std::stringstream	tmp;
+	
+	tmp << m_responseBody.length();
+	m_contentLength = tmp.str();
+	return (m_contentLength);
+}
+
+
 /**
  * @brief Sends the HTTP response over a socket to a client
  * 
@@ -215,20 +280,10 @@ std::string	HttpRequest::expandStatusCode() {
 */
 RequestStatus	HttpRequest::sendResponse() {
 
-	std::stringstream	tmp;
-	
-	tmp << m_responseBody.length();
-
-	m_contentLength = tmp.str();
-
-	m_response +=	"HTTP/1.1 " + m_statusCode + "\r\n"
-					"Content-Type: text/html\r\n"
-					"Content-Length: " + m_contentLength + "\r\n"
-					"\r\n";
-
-	m_response += m_responseBody;
-
-	std::cout << m_response << std::endl;
+	m_response +=	m_version + " " + expandStatusCode() + "\r\n"
+					"Content-Type: " + expandContentType() + "\r\n"
+					"Content-Length: " + expandContentLength() + "\r\n"
+					"\r\n" + m_responseBody;
 	
 	write(m_targetSocketFileDescriptor, m_response.c_str(), m_response.length());
 	return (RESPONSE_SENT);

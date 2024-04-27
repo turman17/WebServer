@@ -2,9 +2,7 @@
 
 Server::Server() {}
 
-Server::~Server() {
-	//! DELETE SERVER SOCKETS
-}
+Server::~Server() {}
 
 void	Server::run() {
 	Event				newEvent;
@@ -27,7 +25,6 @@ void	Server::run() {
 					activeRequest->setRequestStatus(status);
 					m_eventsManager.mod(newEvent.fd(), WRITE_OPERATIONS);
 				} else if (newEvent.isWritable()) {
-					sleep(1);
 					std::cout << "Sending response if possible" << std::endl;
 					activeRequest = m_clientsMap[newEvent.fd()];
 					status = activeRequest->sendResponse();
@@ -76,7 +73,9 @@ void	Server::loadConfig(const char* filename) {
 		if (line == "server:") {
 			ServerBlock newServerBlock;
 			while (std::getline(configFile, line) && !std::isalpha(line[0])) {
-				if (isOnlySpaces(line) || line[0] == '#') {
+				int i = 0;
+				while (isspace(line[i])) {i++;}
+				if (isOnlySpaces(line) || line[i] == '#') {
 					continue;
 				}
 				if (startsWith(std::string("location"), line)) {
@@ -89,7 +88,9 @@ void	Server::loadConfig(const char* filename) {
 					tmpStream >> tmpStr;
 					newLocationBlock.setRoutePath(tmpStr);
 					while (std::getline(configFile, line) && line[0] == '\t' && line[1] == '\t') {
-						if (isOnlySpaces(line) || line[0] == '#') {
+						int i = 0;
+						while (isspace(line[i])) {i++;}
+						if (isOnlySpaces(line) || line[i] == '#') {
 							continue;
 						}
 						assignLocationBlockSetting(line, newLocationBlock);

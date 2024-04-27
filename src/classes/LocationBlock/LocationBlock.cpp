@@ -2,7 +2,7 @@
 
 LocationBlock::LocationBlock() : m_routePath(""), m_root(""), m_indexFile(""),
 	m_uploadedFilesPath("./"), m_redirection(std::make_pair("", "")),
-	m_directoryListing(false) {
+	m_allowedMethods(), m_directoryListing(false) {
 		m_allowedMethods.push_back("GET");
 		m_allowedMethods.push_back("POST");
 		m_allowedMethods.push_back("DELETE");

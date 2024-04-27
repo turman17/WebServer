@@ -46,6 +46,7 @@ namespace http {
 		std::string							m_hostname;
 		int									m_port;
 		std::string							m_domain;
+		std::string							m_version;
 		std::string							m_requestMethod;
 		std::string							m_fileURI;
 		std::string							m_queryString;
@@ -66,6 +67,8 @@ namespace http {
 		HttpRequest();
 		void		buildErrorPage(const std::string& errorCode);
 		std::string	expandStatusCode();
+		std::string	expandContentType();
+		std::string	expandContentLength();
 
 		//* Exceptions
 
