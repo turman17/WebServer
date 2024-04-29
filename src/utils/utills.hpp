@@ -13,6 +13,8 @@ void			ifstreamToString(std::ifstream& source, std::string& destination);
 bool			isFile(const std::string& filename);
 bool			isDirectory(const std::string& filename);
 std::string		basicHtml(const std::string& title, const std::string& body);
+char**			vectorToCharPtrArr(const std::vector<std::string>& vector);
+void			cleanCharPtrArr(char**& toClean);
 
 template<typename Iterator>
 Iterator std_next(const Iterator& it, int x = 1) {

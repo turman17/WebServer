@@ -10,7 +10,6 @@ HttpRequest::HttpRequest(const FileDescriptor& targetSocketFileDescriptor) :
 	m_URL(""),
 	m_filePath(""),
 	m_queryString(""),
-	m_requestBody(""),
 	m_responseBody (""),
 	m_contentType(""),
 	m_contentLength(""), 
@@ -59,21 +58,20 @@ bool	HttpRequest::readRequest() {
 	}
 	delete(firstLine);
 
-	bool flag = false;
 	while (true) {
 		try {
 			std::string* tmp = getNextLine(m_targetSocketFileDescriptor, gnlBuffer);
 			if (!tmp) {
 				return (false);
 			}
-			if (!flag && startsWith("Host:", *tmp)) {
+			if (startsWith("Host:", *tmp)) {
 				m_domain = std::string(std_next(tmp->begin(), 6),
 					std_next(tmp->begin(), tmp->find_last_of(':')));
 			}
-			if (flag)
-				m_requestBody += *tmp;
-			else if (*tmp == "\r\n")
-					flag = true;
+			if (*tmp == "\r\n") {
+				delete(tmp);
+				break;
+			}
 			delete(tmp);
 		}
 		catch (const std::exception& e) {
@@ -97,46 +95,53 @@ RequestStatus	HttpRequest::performReadOperations(const std::vector<ServerBlock>&
 
 	if (m_requestStatus == REQUEST_RECEIVED) {
 		if (!readRequest()) {
-			return (http::CLOSED);
+			return (http::CLOSE);
 		} else if (m_statusCode == NOT_IMPLEMENTED_501) {
 			buildErrorPage(NOT_IMPLEMENTED_501);
 			return (http::ERROR);
 		}
 		assignSettings(serverBlocks);
 		StrVector allowedMethods = m_settings.getAllowedMethods();
-		if (static_cast<int>(m_requestBody.length()) > m_maxBodySize) {
-			buildErrorPage(CONTENT_TOO_LARGE_413);
-			return (http::ERROR);
-		} else if (std::find(allowedMethods.begin(), allowedMethods.end(),
+		if (std::find(allowedMethods.begin(), allowedMethods.end(),
 			m_requestMethod) == allowedMethods.end()) {
 				buildErrorPage(http::FORBIDDEN_403);
 				return (http::ERROR);
 			}
-		if (m_requestMethod == "GET") {
-			if (m_settings.getRedirection().first != "" && m_settings.getRedirection().second != "") {
-				m_statusCode = m_settings.getRedirection().first;
-				m_filePath = m_settings.getRedirection().second;
-			} else {
-				m_filePath = m_settings.getRoot() + m_URL;
+	
+		if (m_settings.getRedirection().first != "" && m_settings.getRedirection().second != "") {
+			m_statusCode = m_settings.getRedirection().first;
+			m_URL = m_settings.getRedirection().second;
+		}
+		m_filePath = m_settings.getRoot() + m_URL;
+	
+		if (startsWith(m_filePath, "/cgi-bin/")) {
+			try {
+				performCgi();
 			}
-			if (isDirectory(m_filePath)) {
-				m_filePath += m_settings.getIndexFile();
-				if (!isFile(m_filePath) && m_settings.getDirectoryListing()) {
-					performDirectoryListing();
-					return (http::FILE_READ);
-				}
-			}
-			std::ifstream requestedFile(m_filePath.c_str());
-			if (requestedFile.fail() || isDirectory(m_filePath)) {
-				buildErrorPage(NOT_FOUND_404);
+			catch (const std::exception& e) {
+				m_statusCode = INTERNAL_ERROR_500;
+				m_response.clear();
 				return (http::ERROR);
 			}
-			ifstreamToString(requestedFile, m_responseBody);
-			requestedFile.close();
-			return (http::FILE_READ);
+			return (http::CGI);
 		}
+		if (isDirectory(m_filePath)) {
+			m_filePath += m_settings.getIndexFile();
+			if (!isFile(m_filePath) && m_settings.getDirectoryListing()) {
+				performDirectoryListing();
+				return (http::OK);
+			}
+		}
+		std::ifstream requestedFile(m_filePath.c_str());
+		if (requestedFile.fail() || isDirectory(m_filePath)) {
+			buildErrorPage(NOT_FOUND_404);
+			return (http::ERROR);
+		}
+		ifstreamToString(requestedFile, m_responseBody);
+		requestedFile.close();
+		return (http::OK);
 	}
-	return CLOSED;
+	return http::CLOSE;
 }
 
 
@@ -338,6 +343,7 @@ bool		HttpRequest::performDirectoryListing() {
 						"\t\t\t<a href=\"" + path + "\" >" + entryName + "</a>\n"
 					"\t\t</li>\n";
 	} while (entry);
+	closedir(directory);
 	htmlBody += "\t</ul>\n";
 	m_responseBody = basicHtml("Directory Listing", htmlBody);
 	m_contentType = "text/html";
@@ -345,15 +351,112 @@ bool		HttpRequest::performDirectoryListing() {
 }
 
 
+void	HttpRequest::performCgi() {
+
+	int		outputPipe[2];
+	pid_t	proccessID;
+
+	if (pipe(outputPipe) == -1) {
+		throw CgiError();
+	}
+	if (dup2(outputPipe[1], STDOUT_FILENO) == -1 || (m_requestMethod == "POST"
+			&& dup2(m_targetSocketFileDescriptor, STDIN_FILENO) == -1)) {
+				throw CgiError();
+			}
+	
+	proccessID = fork();
+	if (proccessID == -1) {
+		throw CgiError();
+	} else if (proccessID == 0) {
+		childProccess(outputPipe);
+	} else {
+		close(outputPipe[1]);
+		int status = waitForProccess(proccessID);
+		if (!WIFEXITED(status) || WEXITSTATUS(status) == 10) {
+			throw CgiError();
+		} else {
+			readResponseFromCgi(outputPipe);
+		}
+	}
+}
+
+
+void	HttpRequest::readResponseFromCgi(int outputPipe[2]) {
+
+	char	buffer[1024];
+	ssize_t	bytesRead;
+	
+	while (true) {
+		bytesRead = read(outputPipe[0], buffer, sizeof(buffer));
+		if (bytesRead == -1) {
+			throw CgiError();
+		} else if (bytesRead == 0) {
+			break;
+		} else {
+			m_response.append(buffer, bytesRead);
+		}
+	}
+	close (outputPipe[0]);
+}
+
+
+void	HttpRequest::childProccess(int outputPipe[2]) {
+
+	close(outputPipe[0]);
+	StrVector	argvVector;
+
+	argvVector.push_back("python3");
+	argvVector.push_back(m_filePath);
+
+	char** argv = vectorToCharPtrArr(argvVector);
+	char** env = createEnvironment();
+
+	execve(argv[0], argv, env);
+	cleanCharPtrArr(argv);
+	cleanCharPtrArr(env);
+	std::exit(10);
+}
+
+int	HttpRequest::waitForProccess(pid_t& proccessID) {
+
+	timeval		start, now;
+	long long	elapsed;
+	int			status = 0;
+
+	gettimeofday(&start, NULL);
+
+	while (true) {
+		if (waitpid(proccessID, &status, WNOHANG) > 0) {
+			break;
+		}
+		gettimeofday(&now, NULL);
+		elapsed = (now.tv_sec - start.tv_sec) * 1000000LL + (now.tv_usec - start.tv_usec);
+		if (elapsed >= 4000000) {
+			kill(proccessID, SIGTERM);
+		}
+		usleep(200000);
+	}
+	return (status);
+}
+
+
+char**	HttpRequest::createEnvironment() {
+
+	std::vector<std::string>	envVector;
+
+	envVector.push_back("PATH_INFO=" + m_filePath);
+	envVector.push_back("REQUEST_METHOD=" + m_requestMethod);
+	envVector.push_back("QUERY_STRING=" + m_queryString);
+
+	return (vectorToCharPtrArr(envVector));
+}
+
+
 /**
  * @brief Sends the HTTP response over a socket to a client
- * 
- * @return If everything goes well returns true and in case of an error returns false
- * 
+ *
 */
-RequestStatus	HttpRequest::sendResponse() {
-
-	std::cout << "\nSending response" << std::endl;
+void	HttpRequest::sendResponse() {
 
 	m_response +=	m_version + " " + expandStatusCode() + "\r\n"
 					"Content-Type: " + expandContentType() + "\r\n"
@@ -361,7 +464,6 @@ RequestStatus	HttpRequest::sendResponse() {
 					"\r\n" + m_responseBody;
 	
 	write(m_targetSocketFileDescriptor, m_response.c_str(), m_response.length());
-	return (RESPONSE_SENT);
 }
 
 
@@ -391,6 +493,9 @@ const RequestStatus&	HttpRequest::getRequestStatus() {
 //* Exceptions
 
 const char* HttpRequest::CloseConnection::what() const throw() {
-
 	return ("Close active connection ASAP");
+}
+
+const char* HttpRequest::CgiError::what() const throw() {
+	return ("Cgi Error");
 }

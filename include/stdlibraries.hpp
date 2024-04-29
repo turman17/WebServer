@@ -21,11 +21,14 @@
 # include <netinet/in.h>
 # include <arpa/inet.h>
 # include <sys/epoll.h>
+# include <sys/wait.h>
 # include <fcntl.h>
 # include <sys/types.h>
 # include <netdb.h>
 # include <sys/stat.h>
 # include <dirent.h>
+# include <signal.h>
+#include <sys/time.h>
 
 # include "../src/utils/CircularBuffer.hpp"
 # include "../src/utils/utills.hpp"

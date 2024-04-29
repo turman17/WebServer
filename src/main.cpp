@@ -10,28 +10,6 @@ int main(void) {
 	//server.printSettings();
 	server.run();
 
-
-	// DIR*		directory;
-	// dirent*		entry = NULL;
-	// std::string	htmlBody = "";
-
-	// directory = opendir("Website/");
-	// if (!directory) {
-	// 	return (false);
-	// }
-	// htmlBody += "\t<ul>\n";
-	// do {
-	// 	entry = readdir(directory);
-	// 	if (!entry) {
-	// 		break;
-	// 	}
-	// 	std::string entryName = entry->d_name;
-	// 	htmlBody +=	"\t\t<li>\n"
-	// 					"\t\t\t<a href=\"" + entryName + "\" >" + entryName + "</a>\n"
-	// 				"\t\t</li>\n";
-	// } while (entry);
-	// htmlBody += "\t</ul>\n";
-	// std::cout << basicHtml("Directory Listing", htmlBody) << std::endl;
 }
 
 

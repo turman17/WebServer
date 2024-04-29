@@ -30,10 +30,8 @@ void	Server::run() {
 					m_eventsManager.mod(newEvent.fd(), WRITE_OPERATIONS);
 				} else if (newEvent.isWritable()) {
 					activeRequest = m_clientsMap[newEvent.fd()];
-					status = activeRequest->sendResponse();
-					if (status == http::RESPONSE_SENT) {
-						activeRequest->setRequestStatus(http::CLOSED);
-					}
+					activeRequest->sendResponse();
+					activeRequest->setRequestStatus(http::CLOSE);
 				}
 			}
 			catch (const std::exception& exception) {
@@ -216,7 +214,6 @@ void	Server::assignServerBlockSetting(const std::string& line, ServerBlock& serv
 		serverBlock.setMaxBodySize(std::atoi(tmp.c_str()));
 	}
 	else {
-		std::cout << directive << std::endl;
 		throw UnknownDirective();
 	}
 }
@@ -279,6 +276,7 @@ void	Server::assignLocationBlockSetting(const std::string& line, LocationBlock& 
 		locationBlock.setUploadedFilesPath(tmp);
 	}
 	else {
+		std::cout << directive << std::endl;
 		throw UnknownDirective();
 	}
 }

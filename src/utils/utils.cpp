@@ -85,3 +85,29 @@ std::string	basicHtml(const std::string& title, const std::string& body) {
 		"</html>\n"
 		);
 }
+
+
+char**	vectorToCharPtrArr(const std::vector<std::string>& vector) {
+
+	char**	result = new char*[vector.size() + 1];
+	int				i = 0;
+
+	for (std::vector<std::string>::const_iterator it = vector.begin();
+			it != vector.end(); it++) {
+				result[i] = new char[(*it).length() + 1];
+				std::memset(result[i], 0, (*it).length() + 1);
+				std::strcpy(result[i], (*it).c_str());
+				i++;
+			}
+	result[i] = NULL;
+	return (result);
+}
+
+
+void	cleanCharPtrArr(char**& toClean) {
+
+	for (int i = 0; toClean[i]; i++) {
+		delete[] toClean[i];
+	}
+	delete[] toClean;
+}

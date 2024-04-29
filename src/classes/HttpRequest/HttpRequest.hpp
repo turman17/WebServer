@@ -20,12 +20,10 @@ namespace http {
 
 	enum RequestStatus {
 		REQUEST_RECEIVED,
-		FILE_FOUND,
 		ERROR,
-		FILE_READ,
-		RESPONSE_READY,
-		RESPONSE_SENT,
-		CLOSED
+		OK,
+		CGI,
+		CLOSE
 	};
 
 
@@ -34,8 +32,8 @@ namespace http {
 								HttpRequest(const FileDescriptor& targetSocketFileDescriptor);
 								~HttpRequest();
 		bool					readRequest();
-		http::RequestStatus		performReadOperations(const std::vector<ServerBlock>& serverBlocks);
-		RequestStatus			sendResponse();
+		RequestStatus			performReadOperations(const std::vector<ServerBlock>& serverBlocks);
+		void					sendResponse();
 		void					assignSettings(const std::vector<ServerBlock>& serverBlocks);
 		void					setHostname(const std::string& hostname);
 		void					setPort(const int& port);
@@ -51,7 +49,6 @@ namespace http {
 		std::string							m_URL;
 		std::string							m_filePath;
 		std::string							m_queryString;
-		std::string							m_requestBody;
 		std::string							m_responseBody;
 		std::string							m_contentType;
 		std::string							m_contentLength;
@@ -65,16 +62,26 @@ namespace http {
 
 		
 		//* Private methods
-		HttpRequest();
-		void		buildErrorPage(const std::string& errorCode);
-		std::string	expandStatusCode();
-		std::string	expandContentType();
-		std::string	expandContentLength();
-		bool		performDirectoryListing();
+						HttpRequest();
+		void			buildErrorPage(const std::string& errorCode);
+		std::string		expandStatusCode();
+		std::string		expandContentType();
+		std::string		expandContentLength();
+		bool			performDirectoryListing();
+		void			performCgi();
+		void			childProccess(int outputPipe[2]);
+		int				waitForProccess(pid_t& proccessID);
+		char**			createEnvironment();
+		void			readResponseFromCgi(int outputPipe[2]);
 
 		//* Exceptions
 
 		class CloseConnection : public std::exception {
+		public:
+			const char* what() const throw();
+		};
+
+		class CgiError : public std::exception {
 		public:
 			const char* what() const throw();
 		};

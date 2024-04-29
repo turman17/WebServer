@@ -27,7 +27,7 @@ void	Clients::removeClosedConnections(EventPoll& eventManager) {
 
 	while (it != m_socketToRequestMap.end()) {
 		next = std_next(it);
-		if (it->second->getRequestStatus() == http::CLOSED) {
+		if (it->second->getRequestStatus() == http::CLOSE) {
 			eventManager.remove(it->first);
 			delete it->second;
 			m_socketToRequestMap.erase(it);
