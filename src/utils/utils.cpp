@@ -59,12 +59,19 @@ bool	isFile(const std::string& filename) {
 }
 
 
-bool isDirectory(const std::string& filename) {
+bool isDirectory(std::string& filename) {
 	struct stat buffer;
 	if (stat(filename.c_str(), &buffer) != 0) {
 		return false;
 	}
-	return S_ISDIR(buffer.st_mode);
+	if (S_ISDIR(buffer.st_mode)) {
+		if (*(filename.end() - 1) != '/') {
+			filename += '/';
+		}
+		return (true);
+	} else {
+		return (false);
+	}
 }
 
 

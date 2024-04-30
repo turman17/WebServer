@@ -67,6 +67,9 @@ bool	HttpRequest::readRequest() {
 			if (startsWith("Host:", *tmp)) {
 				m_domain = std::string(std_next(tmp->begin(), 6),
 					std_next(tmp->begin(), tmp->find_last_of(':')));
+			} else if (startsWith("Content-Length:", *tmp)) {
+				m_contentLength = std::string(std_next(tmp->begin(), 16),
+					std_next(tmp->end(), -1));
 			}
 			if (*tmp == "\r\n") {
 				delete(tmp);
@@ -113,6 +116,15 @@ RequestStatus	HttpRequest::performReadOperations(const std::vector<ServerBlock>&
 			m_URL = m_settings.getRedirection().second;
 		}
 		m_filePath = m_settings.getRoot() + m_URL;
+
+		if (m_requestMethod == "DELETE") {
+			if (std::remove(m_filePath.c_str()) != 0) {
+				buildErrorPage(NOT_FOUND_404);
+				return (http::ERROR);
+			}
+			m_responseBody = basicHtml("Success Deleting File", "<h2>Success Deleting File</h2>");
+			return (http::OK);
+		}
 	
 		if (startsWith(m_filePath, "/cgi-bin/")) {
 			try {
@@ -359,11 +371,6 @@ void	HttpRequest::performCgi() {
 	if (pipe(outputPipe) == -1) {
 		throw CgiError();
 	}
-	if (dup2(outputPipe[1], STDOUT_FILENO) == -1 || (m_requestMethod == "POST"
-			&& dup2(m_targetSocketFileDescriptor, STDIN_FILENO) == -1)) {
-				throw CgiError();
-			}
-	
 	proccessID = fork();
 	if (proccessID == -1) {
 		throw CgiError();
@@ -372,7 +379,7 @@ void	HttpRequest::performCgi() {
 	} else {
 		close(outputPipe[1]);
 		int status = waitForProccess(proccessID);
-		if (!WIFEXITED(status) || WEXITSTATUS(status) == 10) {
+		if (!WIFEXITED(status) || WEXITSTATUS(status) != EXIT_SUCCESS) {
 			throw CgiError();
 		} else {
 			readResponseFromCgi(outputPipe);
@@ -402,7 +409,12 @@ void	HttpRequest::readResponseFromCgi(int outputPipe[2]) {
 
 void	HttpRequest::childProccess(int outputPipe[2]) {
 
+	if (dup2(outputPipe[1], STDOUT_FILENO) == -1 || (m_requestMethod == "POST"
+			&& dup2(m_targetSocketFileDescriptor, STDIN_FILENO) == -1)) {
+				std::exit(1);
+			}
 	close(outputPipe[0]);
+
 	StrVector	argvVector;
 
 	argvVector.push_back("python3");
@@ -411,10 +423,12 @@ void	HttpRequest::childProccess(int outputPipe[2]) {
 	char** argv = vectorToCharPtrArr(argvVector);
 	char** env = createEnvironment();
 
+	chdir(m_settings.getRoot().c_str());
+
 	execve(argv[0], argv, env);
 	cleanCharPtrArr(argv);
 	cleanCharPtrArr(env);
-	std::exit(10);
+	std::exit(1);
 }
 
 int	HttpRequest::waitForProccess(pid_t& proccessID) {
@@ -447,6 +461,8 @@ char**	HttpRequest::createEnvironment() {
 	envVector.push_back("PATH_INFO=" + m_filePath);
 	envVector.push_back("REQUEST_METHOD=" + m_requestMethod);
 	envVector.push_back("QUERY_STRING=" + m_queryString);
+	envVector.push_back("CONTENT_LENGTH=" + m_contentLength);
+	envVector.push_back("UPLOAD_DIR=" + m_settings.getUploadedFilesPath());
 
 	return (vectorToCharPtrArr(envVector));
 }
@@ -458,11 +474,12 @@ char**	HttpRequest::createEnvironment() {
 */
 void	HttpRequest::sendResponse() {
 
-	m_response +=	m_version + " " + expandStatusCode() + "\r\n"
-					"Content-Type: " + expandContentType() + "\r\n"
-					"Content-Length: " + expandContentLength() + "\r\n"
-					"\r\n" + m_responseBody;
-	
+	if (m_requestStatus != http::CLOSE && m_requestStatus != http::CGI) {
+		m_response =	m_version + " " + expandStatusCode() + "\r\n"
+						"Content-Type: " + expandContentType() + "\r\n"
+						"Content-Length: " + expandContentLength() + "\r\n"
+						"\r\n" + m_responseBody;
+	}
 	write(m_targetSocketFileDescriptor, m_response.c_str(), m_response.length());
 }
 
