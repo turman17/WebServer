@@ -127,14 +127,13 @@ RequestStatus	HttpRequest::performReadOperations(const std::vector<ServerBlock>&
 			m_responseBody = basicHtml("Success Deleting File", "<h2>Success Deleting File</h2>");
 			return (http::OK);
 		}
-	
-		if (startsWith(m_filePath, "/cgi-bin/")) {
+		if (m_URL.find("/cgi-bin") != m_URL.npos) {
 			try {
 				performCgi();
 			}
 			catch (const std::exception& e) {
 				m_statusCode = INTERNAL_ERROR_500;
-				m_response.clear();
+				buildErrorPage(INTERNAL_ERROR_500);
 				return (http::ERROR);
 			}
 			return (http::CGI);
