@@ -70,7 +70,7 @@ namespace http {
 		std::string		expandContentLength();
 		bool			performDirectoryListing();
 		void			performCgi();
-		void			childProccess(int outputPipe[2]);
+		void			childProccess(int outputPipe[2], int inputPipe[2]);
 		int				waitForProccess(pid_t& proccessID);
 		char**			createEnvironment();
 		void			readResponseFromCgi(int outputPipe[2]);

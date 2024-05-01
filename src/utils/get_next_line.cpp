@@ -6,7 +6,7 @@ static std::string*	ft_strjoinm(const std::string& s1, const std::string& s2);
 static void			buffer_clear(char *buffer);
 static void			free_line(std::string *line);
 
-std::string*	getNextLine(const FileDescriptor& fd, char buffer[gnl::BUFFER_SIZE + 1])
+std::string*	getNextLine(const FileDescriptor& fd, char buffer[gnl::BUFFER_SIZE + 1], bool single_call)
 {
 	std::string*	line = NULL;
 	int				flag;
@@ -19,12 +19,12 @@ std::string*	getNextLine(const FileDescriptor& fd, char buffer[gnl::BUFFER_SIZE 
 		if (buffer[0] == '\0')
 		{
 			bytesRead = read(fd, buffer, gnl::BUFFER_SIZE);
-			if (bytesRead == -1) {
+			if (bytesRead == -1 && single_call) {
 				free_line(line);
 				throw BadRead();
-			}
-			else if (bytesRead == 0)
+			} else if (bytesRead <= 0) {
 				return (line);
+			}
 		}
 		flag = line_updater(line, buffer);
 		buffer_clear(buffer);
@@ -46,8 +46,9 @@ static int	line_updater(std::string*& line, char buffer[])
 		if (line)
 			delete(line);
 		line = join;
-		if (line->find('\n') != std::string::npos)
+		if (line->find('\n') != std::string::npos) {
 			return (1);
+		}
 		return (0);
 	}
 	catch (const std::exception&) {
@@ -70,8 +71,9 @@ static std::string*	ft_strjoinm(const std::string& s1, const std::string& s2)
 	while (s2[i] != '\0')
 	{
 		*s3 += s2[i++];
-		if (s2[i - 1] == '\n')
+		if (s2[i - 1] == '\n') {
 			break ;
+		}
 	}
 	return (s3);
 }

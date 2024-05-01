@@ -34,8 +34,13 @@ bool	HttpRequest::readRequest() {
 	std::string*	firstLine(0);
 	char			gnlBuffer[gnl::BUFFER_SIZE + 1] = {0};
 
-	firstLine = getNextLine(m_targetSocketFileDescriptor, gnlBuffer);
-	if (!firstLine) {
+	try {
+		firstLine = getNextLine(m_targetSocketFileDescriptor, gnlBuffer, true);
+		if (!firstLine) {
+			return (false);
+		}
+	}
+	catch (std ::exception& e) {
 		return (false);
 	}
 
@@ -58,28 +63,26 @@ bool	HttpRequest::readRequest() {
 	}
 	delete(firstLine);
 
+	bool isBody = false;
 	while (true) {
-		try {
 			std::string* tmp = getNextLine(m_targetSocketFileDescriptor, gnlBuffer);
-			if (!tmp) {
-				return (false);
+			if (!tmp)
+				break;
+			if (!isBody && startsWith("Host:", *tmp)) {
+				m_domain = tmp->substr(tmp->find(":") + 2);
+			} else if (!isBody && startsWith("Content-Length:", *tmp)) {
+				m_contentLength = m_domain = tmp->substr(tmp->find(":") + 2);
 			}
-			if (startsWith("Host:", *tmp)) {
-				m_domain = std::string(std_next(tmp->begin(), 6),
-					std_next(tmp->begin(), tmp->find_last_of(':')));
-			} else if (startsWith("Content-Length:", *tmp)) {
-				m_contentLength = std::string(std_next(tmp->begin(), 16),
-					std_next(tmp->end(), -1));
+			if (isBody) {
+				m_responseBody += *tmp;
+				if (static_cast<int>(m_responseBody.length()) >= std::atoi(m_contentLength.c_str())) {
+					break;
+				}
 			}
 			if (*tmp == "\r\n") {
-				delete(tmp);
-				break;
+				isBody = true;
 			}
 			delete(tmp);
-		}
-		catch (const std::exception& e) {
-			break;
-		}
 	}
 	return (true);
 }
@@ -110,6 +113,9 @@ RequestStatus	HttpRequest::performReadOperations(const std::vector<ServerBlock>&
 			m_requestMethod) == allowedMethods.end()) {
 				buildErrorPage(http::FORBIDDEN_403);
 				return (http::ERROR);
+			} else if (std::atoi(m_contentLength.c_str()) > m_maxBodySize) {
+				buildErrorPage(http::CONTENT_TOO_LARGE_413);
+				return (http::ERROR);
 			}
 	
 		if (m_settings.getRedirection().first != "" && m_settings.getRedirection().second != "") {
@@ -117,7 +123,6 @@ RequestStatus	HttpRequest::performReadOperations(const std::vector<ServerBlock>&
 			m_URL = m_settings.getRedirection().second;
 		}
 		m_filePath = m_settings.getRoot() + m_URL;
-
 
 		if (m_requestMethod == "DELETE") {
 			if (std::remove(m_filePath.c_str()) != 0) {
@@ -367,17 +372,24 @@ bool		HttpRequest::performDirectoryListing() {
 
 void	HttpRequest::performCgi() {
 
-	int		outputPipe[2];
+	int		outputPipe[2], inputPipe[2];
 	pid_t	proccessID;
 
-	if (pipe(outputPipe) == -1) {
+	if (pipe(outputPipe) == -1 || (m_requestMethod == "POST" && pipe(inputPipe) == -1)) {
 		throw CgiError();
 	}
+	FileDescriptor(outputPipe[0]).setNonBlocking();
+
+	if (m_requestMethod == "POST") {
+		write(inputPipe[1], m_responseBody.c_str(), std::atoi(m_contentLength.c_str()));
+		close(inputPipe[1]);
+	}
+
 	proccessID = fork();
 	if (proccessID == -1) {
 		throw CgiError();
 	} else if (proccessID == 0) {
-		childProccess(outputPipe);
+		childProccess(outputPipe, inputPipe);
 	} else {
 		close(outputPipe[1]);
 		int status = waitForProccess(proccessID);
@@ -409,24 +421,24 @@ void	HttpRequest::readResponseFromCgi(int outputPipe[2]) {
 }
 
 
-void	HttpRequest::childProccess(int outputPipe[2]) {
+void	HttpRequest::childProccess(int outputPipe[2], int inputPipe[2]) {
 
 	if (dup2(outputPipe[1], STDOUT_FILENO) == -1 || (m_requestMethod == "POST"
-			&& dup2(m_targetSocketFileDescriptor, STDIN_FILENO) == -1)) {
+			&& dup2(inputPipe[0], STDIN_FILENO) == -1)) {
 				std::exit(1);
 			}
+	close(inputPipe[1]);
 	close(outputPipe[0]);
 
 	StrVector	argvVector;
 
-	argvVector.push_back("python3");
-	argvVector.push_back(m_filePath);
+	argvVector.push_back("/usr/bin/python3");
+	argvVector.push_back(m_URL.substr(1));
 
 	char** argv = vectorToCharPtrArr(argvVector);
 	char** env = createEnvironment();
 
 	chdir(m_settings.getRoot().c_str());
-
 	execve(argv[0], argv, env);
 	cleanCharPtrArr(argv);
 	cleanCharPtrArr(env);

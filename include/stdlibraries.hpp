@@ -44,6 +44,6 @@ namespace gnl {
 
 void					fatalError(int _errno, void (*atExit)(void *) = NULL, 
 							void* trash = NULL);
-std::string*	getNextLine(const FileDescriptor& fd, char buffer[gnl::BUFFER_SIZE + 1]);
+std::string*	getNextLine(const FileDescriptor& fd, char buffer[gnl::BUFFER_SIZE + 1], bool single_call = false);
 
 #endif
