@@ -38,7 +38,6 @@ bool	HttpRequest::readRequest() {
 	if (!firstLine) {
 		return (false);
 	}
-	std::cout << *firstLine << std::endl;
 
 	std::string::iterator firstSpace = std_next(firstLine->begin(),
 		firstLine->find_first_of(' '));
@@ -153,8 +152,8 @@ RequestStatus	HttpRequest::performReadOperations(const std::vector<ServerBlock>&
 			return (http::ERROR);
 		}
 		ifstreamToString(requestedFile, m_responseBody);
-		std::cout << "ERROR 404" << std::endl;
 		requestedFile.close();
+		m_statusCode = OK_200;
 		return (http::OK);
 	}
 	return http::CLOSE;
@@ -478,7 +477,7 @@ char**	HttpRequest::createEnvironment() {
 */
 void	HttpRequest::sendResponse() {
 
-	if (m_requestStatus != http::CLOSE && m_requestStatus != http::CGI) {
+	if (m_requestStatus != http::CGI) {
 		m_response =	m_version + " " + expandStatusCode() + "\r\n"
 						"Content-Type: " + expandContentType() + "\r\n"
 						"Content-Length: " + expandContentLength() + "\r\n"
