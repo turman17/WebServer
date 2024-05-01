@@ -1,4 +1,4 @@
-#include "HTTPRequest.hpp"
+#include "HttpRequest.hpp"
 #include "../Clients/Clients.hpp"
 
 using namespace http;
@@ -38,6 +38,7 @@ bool	HttpRequest::readRequest() {
 	if (!firstLine) {
 		return (false);
 	}
+	std::cout << *firstLine << std::endl;
 
 	std::string::iterator firstSpace = std_next(firstLine->begin(),
 		firstLine->find_first_of(' '));
@@ -98,7 +99,8 @@ RequestStatus	HttpRequest::performReadOperations(const std::vector<ServerBlock>&
 
 	if (m_requestStatus == REQUEST_RECEIVED) {
 		if (!readRequest()) {
-			return (http::CLOSE);
+			m_requestStatus = http::CLOSE;
+			throw CloseConnection();
 		} else if (m_statusCode == NOT_IMPLEMENTED_501) {
 			buildErrorPage(NOT_IMPLEMENTED_501);
 			return (http::ERROR);
@@ -116,6 +118,7 @@ RequestStatus	HttpRequest::performReadOperations(const std::vector<ServerBlock>&
 			m_URL = m_settings.getRedirection().second;
 		}
 		m_filePath = m_settings.getRoot() + m_URL;
+
 
 		if (m_requestMethod == "DELETE") {
 			if (std::remove(m_filePath.c_str()) != 0) {
@@ -150,6 +153,7 @@ RequestStatus	HttpRequest::performReadOperations(const std::vector<ServerBlock>&
 			return (http::ERROR);
 		}
 		ifstreamToString(requestedFile, m_responseBody);
+		std::cout << "ERROR 404" << std::endl;
 		requestedFile.close();
 		return (http::OK);
 	}
@@ -481,6 +485,8 @@ void	HttpRequest::sendResponse() {
 						"\r\n" + m_responseBody;
 	}
 	write(m_targetSocketFileDescriptor, m_response.c_str(), m_response.length());
+	m_requestStatus = http::CLOSE;
+	throw CloseConnection();
 }
 
 

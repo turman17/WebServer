@@ -7,7 +7,7 @@ int main(void) {
 	Server	server;
 
 	server.loadConfig("webserv.conf");
-	//server.printSettings();
+	server.printSettings();
 	server.run();
 
 }

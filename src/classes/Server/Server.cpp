@@ -31,12 +31,14 @@ void	Server::run() {
 				} else if (newEvent.isWritable()) {
 					activeRequest = m_clientsMap[newEvent.fd()];
 					activeRequest->sendResponse();
-					activeRequest->setRequestStatus(http::CLOSE);
 				}
 			}
 			catch (const std::exception& exception) {
-				m_clientsMap.removeClosedConnections(m_eventsManager);
-				break;
+				if (exception.what() == "Close active connection ASAP") {
+					m_clientsMap.removeClosedConnections(m_eventsManager);
+				} else {
+					break;
+				}
 			}
 		}
 	}
