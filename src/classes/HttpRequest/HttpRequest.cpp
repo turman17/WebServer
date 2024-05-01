@@ -98,7 +98,6 @@ bool	HttpRequest::readRequest() {
 */
 RequestStatus	HttpRequest::performReadOperations(const std::vector<ServerBlock>& serverBlocks) {
 
-
 	if (m_requestStatus == REQUEST_RECEIVED) {
 		if (!readRequest()) {
 			m_requestStatus = http::CLOSE;

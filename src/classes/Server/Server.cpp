@@ -20,15 +20,16 @@ void	Server::run() {
 		while (NEW_EVENTS) {
 			try {
 				newEvent = m_eventsManager.getNextEvent();
-				std::cout << "\nNew event on fd: " << newEvent.fd() << std::endl;
 				if (newEvent.isNewConnection(m_listeningSockets)) {
 					acceptNewConnection(newEvent);
 				} else if (newEvent.isReadable()) {
 					activeRequest = m_clientsMap[newEvent.fd()];
+					std::cout << "\nCan read request on file descriptor " << newEvent.fd() << std::endl;
 					status = activeRequest->performReadOperations(m_serverBlocks);
 					activeRequest->setRequestStatus(status);
 					m_eventsManager.mod(newEvent.fd(), WRITE_OPERATIONS);
 				} else if (newEvent.isWritable()) {
+					std::cout << "\nCan send response on file descriptor " << newEvent.fd() << "\n";
 					activeRequest = m_clientsMap[newEvent.fd()];
 					activeRequest->sendResponse();
 				}
@@ -55,6 +56,8 @@ void	Server::acceptNewConnection(const Event& event) {
 
 	newConnectionFd = accept(event.fd(), NULL, NULL);
 	newConnectionFd.setNonBlocking();
+
+	std::cout << "\nNew connection on " << event.getHostname() << ":" << event.getPort() << std::endl;
 
 	http::HttpRequest* newRequest = new http::HttpRequest(newConnectionFd);
 	newRequest->setPort(event.getPort());
