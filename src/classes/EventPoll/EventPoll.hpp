@@ -34,6 +34,7 @@ public:
 	void	waitForEvents() const;
 	Event	getNextEvent() const;
 
+
 private:
 	const FileDescriptor									m_fileDescriptor;
 	mutable CircularBuffer<Event, (MAX_EVENTS / 4)>			m_newEvents;
@@ -47,11 +48,6 @@ private:
 			const char* what() const throw();
 		private:
 			const std::string	m_errorMessage;
-	};
-
-	class NoMoreNewEvents : public std::exception {
-		public:
-			const char* what() const throw();
 	};
 };
 

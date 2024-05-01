@@ -40,6 +40,7 @@ namespace http {
 		void					setDomain(const std::string& domain);
 		void					setRequestStatus(const RequestStatus& status);
 		const RequestStatus&	getRequestStatus();
+
 	private:
 		std::string							m_hostname;
 		int									m_port;
@@ -75,11 +76,6 @@ namespace http {
 		void			readResponseFromCgi(int outputPipe[2]);
 
 		//* Exceptions
-
-		class CloseConnection : public std::exception {
-		public:
-			const char* what() const throw();
-		};
 
 		class CgiError : public std::exception {
 		public:

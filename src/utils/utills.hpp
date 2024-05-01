@@ -45,4 +45,14 @@ public:
 	}
 };
 
+class CloseConnection : public std::exception {
+public:
+	const char* what() const throw();
+};
+
+class NoMoreNewEvents : public std::exception {
+		public:
+			const char* what() const throw();
+	};
+
 #endif

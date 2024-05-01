@@ -515,9 +515,6 @@ const RequestStatus&	HttpRequest::getRequestStatus() {
 
 //* Exceptions
 
-const char* HttpRequest::CloseConnection::what() const throw() {
-	return ("Close active connection ASAP");
-}
 
 const char* HttpRequest::CgiError::what() const throw() {
 	return ("Cgi Error");

@@ -33,12 +33,11 @@ void	Server::run() {
 					activeRequest->sendResponse();
 				}
 			}
-			catch (const std::exception& exception) {
-				if (exception.what() == "Close active connection ASAP") {
-					m_clientsMap.removeClosedConnections(m_eventsManager);
-				} else {
-					break;
-				}
+			catch (const CloseConnection&) {
+				m_clientsMap.removeClosedConnections(m_eventsManager);
+			}
+			catch (const NoMoreNewEvents&) {
+				break;
 			}
 		}
 	}

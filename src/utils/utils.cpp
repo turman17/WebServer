@@ -118,3 +118,13 @@ void	cleanCharPtrArr(char**& toClean) {
 	}
 	delete[] toClean;
 }
+
+
+const char* CloseConnection::what() const throw() {
+	return ("Close active connection ASAP");
+}
+
+
+const char* NoMoreNewEvents::what() const throw() {
+	return ("No more new events");
+}
