@@ -101,7 +101,9 @@ void	EventPoll::waitForEvents() const {
 	}
 
 	for (int i = 0; i < newEventsNum; i++) {
-		m_newEvents.push_back(Event(newEvents[i].data.fd, newEvents[i].events));
+		if (newEvents[i].data.fd != STDIN_FILENO && newEvents[i].data.fd != STDOUT_FILENO) {
+			m_newEvents.push_back(Event(newEvents[i].data.fd, newEvents[i].events));
+		}
 	}
 }
 

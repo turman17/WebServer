@@ -390,7 +390,8 @@ void	HttpRequest::performCgi() {
 	} else if (proccessID == 0) {
 		childProccess(outputPipe, inputPipe);
 	} else {
-		close(inputPipe[0]);
+		if (m_requestMethod == "POST")
+			close(inputPipe[0]);
 		close(outputPipe[1]);
 		int status = waitForProccess(proccessID);
 		if (!WIFEXITED(status) || WEXITSTATUS(status) != EXIT_SUCCESS) {
@@ -427,7 +428,8 @@ void	HttpRequest::childProccess(int outputPipe[2], int inputPipe[2]) {
 			&& dup2(inputPipe[0], STDIN_FILENO) == -1)) {
 				std::exit(1);
 			}
-	close(inputPipe[1]);
+	if (m_requestMethod == "POST")
+		close(inputPipe[1]);
 	close(outputPipe[0]);
 
 	StrVector	argvVector;
