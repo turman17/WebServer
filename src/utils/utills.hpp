@@ -15,6 +15,7 @@ bool			isDirectory(std::string& filename);
 std::string		basicHtml(const std::string& title, const std::string& body);
 char**			vectorToCharPtrArr(const std::vector<std::string>& vector);
 void			cleanCharPtrArr(char**& toClean);
+void			signalHandler(int signal_num);
 
 template<typename Iterator>
 Iterator std_next(const Iterator& it, int x = 1) {
@@ -51,8 +52,9 @@ public:
 };
 
 class NoMoreNewEvents : public std::exception {
-		public:
-			const char* what() const throw();
-	};
+public:
+	const char* what() const throw();
+};
+
 
 #endif

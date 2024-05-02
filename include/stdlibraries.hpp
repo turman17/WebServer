@@ -28,7 +28,7 @@
 # include <sys/stat.h>
 # include <dirent.h>
 # include <signal.h>
-#include <sys/time.h>
+# include <sys/time.h>
 
 # include "../src/utils/CircularBuffer.hpp"
 # include "../src/utils/utills.hpp"
@@ -37,13 +37,17 @@
 typedef std::pair<std::string, std::string> StrPair;
 typedef std::vector<std::string>			StrVector;
 
+typedef struct sigaction s_sigaction;
+
+extern volatile sig_atomic_t g_signalStatus;
 
 namespace gnl {
 	const int BUFFER_SIZE = 1024;
 }
 
-void					fatalError(int _errno, void (*atExit)(void *) = NULL, 
-							void* trash = NULL);
-std::string*	getNextLine(const FileDescriptor& fd, char buffer[gnl::BUFFER_SIZE + 1], bool single_call = false);
+void			fatalError(int _errno, void (*atExit)(void *) = NULL, 
+					void* trash = NULL);
+std::string*	getNextLine(const FileDescriptor& fd,
+					char buffer[gnl::BUFFER_SIZE + 1], bool single_call = false);
 
 #endif
