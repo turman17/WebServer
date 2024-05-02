@@ -1,4 +1,3 @@
-
 import cgi
 import os
 
@@ -34,4 +33,4 @@ def main():
 	print("</body>")
 	print("</html>")
 
-main()	
+main()

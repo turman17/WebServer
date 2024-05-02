@@ -1,5 +1,4 @@
 import cgi
-from urllib.parse import unquote
 
 def main():
 
