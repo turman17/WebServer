@@ -119,6 +119,11 @@ void	cleanCharPtrArr(char**& toClean) {
 	delete[] toClean;
 }
 
+void signalHandler(int signal_num) {
+	(void)signal_num;
+	g_signalStatus = 1;
+}
+
 
 const char* CloseConnection::what() const throw() {
 	return ("Close active connection ASAP");

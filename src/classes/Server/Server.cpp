@@ -1,8 +1,15 @@
 # include "Server.hpp"
 
+volatile sig_atomic_t g_signalStatus = 0;
+
 Server::Server() {}
 
-Server::~Server() {}
+Server::~Server() {
+	for (std::vector<ServerSocket>::iterator it = m_listeningSockets.begin();
+			it != m_listeningSockets.end(); std::advance(it, 1)) {
+				(*it).closeSocket();
+			}
+}
 
 
 /**
@@ -15,9 +22,14 @@ void	Server::run() {
 
 	setupListeningSockets();
 	setupEpoll();
-	while (true) {
-		m_eventsManager.waitForEvents();
-		while (NEW_EVENTS) {
+	while (true && g_signalStatus == 0) {
+		try {
+			m_eventsManager.waitForEvents();
+		}
+		catch (const std::exception&) {
+			return;
+		}
+		while (NEW_EVENTS && g_signalStatus == 0) {
 			try {
 				newEvent = m_eventsManager.getNextEvent();
 				if (newEvent.isNewConnection(m_listeningSockets)) {

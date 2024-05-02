@@ -390,6 +390,7 @@ void	HttpRequest::performCgi() {
 	} else if (proccessID == 0) {
 		childProccess(outputPipe, inputPipe);
 	} else {
+		close(inputPipe[0]);
 		close(outputPipe[1]);
 		int status = waitForProccess(proccessID);
 		if (!WIFEXITED(status) || WEXITSTATUS(status) != EXIT_SUCCESS) {

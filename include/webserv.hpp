@@ -12,6 +12,4 @@
 # include "../src/classes/ServerBlock/ServerBlock.hpp"
 # include "../src/classes/Server/Server.hpp"
 
-const char DEFAULT_ERROR_PATH[] = "./Errors/DefaultError.html";
-
 #endif
