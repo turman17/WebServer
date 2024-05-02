@@ -8,42 +8,61 @@ Server::~Server() {}
 /**
  * @brief Server Core
 */
-void	Server::run() {
-	Event				newEvent;
-	http::RequestStatus	status;
-	http::HttpRequest	*activeRequest;
+void Server::run()
+{
+	try
+	{
+		Event newEvent;
+		http::RequestStatus status;
+		http::HttpRequest *activeRequest;
 
-	setupListeningSockets();
-	setupEpoll();
-	while (true) {
-		m_eventsManager.waitForEvents();
-		while (NEW_EVENTS) {
-			try {
-				newEvent = m_eventsManager.getNextEvent();
-				if (newEvent.isNewConnection(m_listeningSockets)) {
-					acceptNewConnection(newEvent);
-				} else if (newEvent.isReadable()) {
-					activeRequest = m_clientsMap[newEvent.fd()];
-					std::cout << "\nCan read request on file descriptor " << newEvent.fd() << std::endl;
-					status = activeRequest->performReadOperations(m_serverBlocks);
-					activeRequest->setRequestStatus(status);
-					m_eventsManager.mod(newEvent.fd(), WRITE_OPERATIONS);
-				} else if (newEvent.isWritable()) {
-					std::cout << "\nCan send response on file descriptor " << newEvent.fd() << "\n";
-					activeRequest = m_clientsMap[newEvent.fd()];
-					activeRequest->sendResponse();
+		setupListeningSockets();
+		setupEpoll();
+		while (keepRunning)
+		{
+			try
+			{
+				m_eventsManager.waitForEvents();
+				while (NEW_EVENTS)
+				{
+					newEvent = m_eventsManager.getNextEvent();
+					if (newEvent.isNewConnection(m_listeningSockets))
+					{
+						acceptNewConnection(newEvent);
+					}
+					else if (newEvent.isReadable())
+					{
+						activeRequest = m_clientsMap[newEvent.fd()];
+						status = activeRequest->performReadOperations(m_serverBlocks);
+						activeRequest->setRequestStatus(status);
+						m_eventsManager.mod(newEvent.fd(), WRITE_OPERATIONS);
+					}
+					else if (newEvent.isWritable())
+					{
+						activeRequest = m_clientsMap[newEvent.fd()];
+						activeRequest->sendResponse();
+					}
 				}
 			}
-			catch (const CloseConnection&) {
-				m_clientsMap.removeClosedConnections(m_eventsManager);
-			}
-			catch (const NoMoreNewEvents&) {
-				break;
+			catch (const EventPoll::EventPollException &e)
+			{
+				if (errno == EINTR)
+				{
+					std::cout << "epoll_wait was interrupted by a signal. Continuing...\n";
+					continue;
+				}
+				else
+				{
+					throw;
+				}
 			}
 		}
 	}
+	catch (const std::exception &e)
+	{
+		std::cerr << "Error: " << e.what() << std::endl;
+	}
 }
-
 
 /**
  * @brief Accepts a new connection

@@ -13,5 +13,6 @@
 # include "../src/classes/Server/Server.hpp"
 
 const char DEFAULT_ERROR_PATH[] = "./Errors/DefaultError.html";
+extern volatile sig_atomic_t keepRunning;
 
 #endif

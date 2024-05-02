@@ -2,16 +2,41 @@
 
 using namespace epoll;
 
-int main(void) {
+#include <csignal>
+#include <unistd.h>
 
-	Server	server;
+volatile sig_atomic_t keepRunning = 1;
+
+void signalHandler(int signal_num)
+{
+	std::cout << "Interrupt signal (" << signal_num << ") received.\n";
+	keepRunning = 0;
+}
+
+int main()
+{
+	struct sigaction act;
+	act.sa_handler = signalHandler;
+	sigemptyset(&act.sa_mask);
+	act.sa_flags = 0;
+
+	sigaction(SIGINT, &act, NULL);
+
+	Server server;
 
 	server.loadConfig("webserv.conf");
 	server.printSettings();
-	server.run();
 
+	while (keepRunning)
+	{
+		server.run();
+		std::cout << "You killed me my sweethurt\n";
+		sleep(1);
+	}
+
+	std::cout << "Exiting main loop." << std::endl;
+	return 0;
 }
-
 
 // int	main(void) {
 
@@ -71,5 +96,5 @@ int main(void) {
 // 	catch (std::exception& e) {
 // 		std::cerr << e.what() << std::endl;
 // 	}
-	
+
 // }

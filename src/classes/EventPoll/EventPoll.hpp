@@ -22,33 +22,33 @@ namespace epoll {
 
 using namespace epoll;
 
-
-class EventPoll {
+class EventPoll
+{
 
 public:
-			EventPoll();
-			~EventPoll();
-	void	add(const FileDescriptor& fileDescriptor, uint32_t eventsToNotify) const;
-	void	mod(const FileDescriptor& fileDescriptor, uint32_t eventsToNotify) const;
-	void	remove(const FileDescriptor& fileDescriptor) const;
-	void	waitForEvents() const;
-	Event	getNextEvent() const;
+	EventPoll();
+	~EventPoll();
 
+	void add(const FileDescriptor &fileDescriptor, uint32_t eventsToNotify) const;
+	void mod(const FileDescriptor &fileDescriptor, uint32_t eventsToNotify) const;
+	void remove(const FileDescriptor &fileDescriptor) const;
+	void waitForEvents() const;
+	Event getNextEvent() const;
+
+	class EventPollException : public std::exception
+	{
+	public:
+		EventPollException(const std::string &errorMessage);
+		~EventPollException() throw();
+		const char *what() const throw();
+
+	private:
+		const std::string m_errorMessage;
+	};
 
 private:
-	const FileDescriptor									m_fileDescriptor;
-	mutable CircularBuffer<Event, (MAX_EVENTS / 4)>			m_newEvents;
-
-
-	//* Exceptions
-	class	EventPollException : public std::exception {
-		public:
-			EventPollException(const std::string& errorMessage);
-			~EventPollException() throw();
-			const char* what() const throw();
-		private:
-			const std::string	m_errorMessage;
-	};
+	const FileDescriptor m_fileDescriptor;
+	mutable CircularBuffer<Event, (MAX_EVENTS / 4)> m_newEvents;
 };
 
 #endif
