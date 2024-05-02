@@ -1,7 +1,7 @@
 # include "ServerBlock.hpp"
 
 ServerBlock::ServerBlock() : m_port(80), m_maxBodySize(1024), m_hostname("0.0.0.0"),
-	m_serverName("_"), m_root("./") {
+	m_serverName(""), m_root("./") {
 		m_errorPages["404"] = "./Website/error_pages/404.html";
 		m_errorPages["500"] = "./Website/error_pages/500.html";
 		m_errorPages["501"] = "./Website/error_pages/501.html";

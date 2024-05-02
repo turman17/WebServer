@@ -50,6 +50,10 @@
 		"map": "cpp",
 		"fstream": "cpp",
 		"sstream": "cpp",
-		"chrono": "cpp"
+		"chrono": "cpp",
+		"cerrno": "cpp",
+		"csignal": "cpp",
+		"ctime": "cpp",
+		"ratio": "cpp"
 	}
 }

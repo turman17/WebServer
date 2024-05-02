@@ -52,6 +52,7 @@ namespace http {
 		std::string							m_queryString;
 		std::string							m_responseBody;
 		std::string							m_contentType;
+		std::string							m_requestContentType;
 		std::string							m_contentLength;
 		std::string							m_response;
 		std::string							m_statusCode;
@@ -78,6 +79,11 @@ namespace http {
 		//* Exceptions
 
 		class CgiError : public std::exception {
+		public:
+			const char* what() const throw();
+		};
+
+		class CgiNotFound : public std::exception {
 		public:
 			const char* what() const throw();
 		};

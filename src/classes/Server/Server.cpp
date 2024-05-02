@@ -285,7 +285,7 @@ void	Server::assignLocationBlockSetting(const std::string& line, LocationBlock& 
 			throw BadConfig();
 		locationBlock.setDirectoryListing(tmp == "on" ? true: false);
 	}
-	else if (directive == "client_body_temp_path") {
+	else if (directive == "upload_dir") {
 		valueStream >> tmp;
 		if (valueStream.fail())
 			throw BadConfig();

@@ -16,6 +16,7 @@ std::string		basicHtml(const std::string& title, const std::string& body);
 char**			vectorToCharPtrArr(const std::vector<std::string>& vector);
 void			cleanCharPtrArr(char**& toClean);
 void			signalHandler(int signal_num);
+std::string		strip(const std::string& str);
 
 template<typename Iterator>
 Iterator std_next(const Iterator& it, int x = 1) {
