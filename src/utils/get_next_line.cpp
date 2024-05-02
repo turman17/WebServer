@@ -70,10 +70,12 @@ static std::string*	ft_strjoinm(const std::string& s1, const std::string& s2)
 	i = 0;
 	while (s2[i] != '\0')
 	{
-		*s3 += s2[i++];
-		if (s2[i - 1] == '\n') {
+		if (s2[i] != '\r')
+			*s3 += s2[i];
+		if (s2[i] == '\n') {
 			break ;
 		}
+		i++;
 	}
 	return (s3);
 }

@@ -124,6 +124,19 @@ void signalHandler(int signal_num) {
 	g_signalStatus = 1;
 }
 
+std::string	strip(const std::string& str) {
+
+	std::string::const_iterator firstLetterIt = str.begin();
+	while (std::isspace(*firstLetterIt)) {
+		firstLetterIt++;
+	}
+	std::string::const_iterator lastLetterIt = str.end() - 1;
+	while (std::isspace(*lastLetterIt)) {
+		lastLetterIt--;
+	}
+	return (std::string(firstLetterIt, lastLetterIt + 1));
+}
+
 
 const char* CloseConnection::what() const throw() {
 	return ("Close active connection ASAP");

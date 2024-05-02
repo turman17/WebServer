@@ -12,6 +12,7 @@ HttpRequest::HttpRequest(const FileDescriptor& targetSocketFileDescriptor) :
 	m_queryString(""),
 	m_responseBody (""),
 	m_contentType(""),
+	m_requestContentType(""),
 	m_contentLength(""), 
 	m_response(""),
 	m_statusCode(""),
@@ -69,9 +70,11 @@ bool	HttpRequest::readRequest() {
 			if (!tmp)
 				break;
 			if (!isBody && startsWith("Host:", *tmp)) {
-				m_domain = tmp->substr(tmp->find(":") + 2);
+				m_domain = strip(tmp->substr(tmp->find(":") + 2));
 			} else if (!isBody && startsWith("Content-Length:", *tmp)) {
-				m_contentLength = m_domain = tmp->substr(tmp->find(":") + 2);
+				m_contentLength = tmp->substr(tmp->find(":") + 2);
+			} else if (!isBody && startsWith("Content-Type:", *tmp)) {
+				m_requestContentType = tmp->substr(tmp->find(":") + 2);
 			}
 			if (isBody) {
 				m_responseBody += *tmp;
@@ -79,7 +82,7 @@ bool	HttpRequest::readRequest() {
 					break;
 				}
 			}
-			if (*tmp == "\r\n") {
+			if (*tmp == "\r\n" || *tmp == "\n") {
 				isBody = true;
 			}
 			delete(tmp);
@@ -135,8 +138,11 @@ RequestStatus	HttpRequest::performReadOperations(const std::vector<ServerBlock>&
 			try {
 				performCgi();
 			}
+			catch (const CgiNotFound&) {
+				buildErrorPage(NOT_FOUND_404);
+				return (http::ERROR);
+			}
 			catch (const std::exception& e) {
-				m_statusCode = INTERNAL_ERROR_500;
 				buildErrorPage(INTERNAL_ERROR_500);
 				return (http::ERROR);
 			}
@@ -210,6 +216,7 @@ void	HttpRequest::assignSettings(const std::vector<ServerBlock>& serverBlocks) {
 		m_settings.setRoot(selectedServerBlock->getRoot());
 	}
 	m_errorPages = selectedServerBlock->getErrorPages();
+	m_maxBodySize = selectedServerBlock->getMaxBodySize();
 }
 
 
@@ -395,6 +402,9 @@ void	HttpRequest::performCgi() {
 		close(outputPipe[1]);
 		int status = waitForProccess(proccessID);
 		if (!WIFEXITED(status) || WEXITSTATUS(status) != EXIT_SUCCESS) {
+			if (WEXITSTATUS(status) == ENOENT) {
+				throw CgiNotFound();
+			}
 			throw CgiError();
 		} else {
 			readResponseFromCgi(outputPipe);
@@ -442,9 +452,10 @@ void	HttpRequest::childProccess(int outputPipe[2], int inputPipe[2]) {
 
 	chdir(m_settings.getRoot().c_str());
 	execve(argv[0], argv, env);
+	int status = errno;
 	cleanCharPtrArr(argv);
 	cleanCharPtrArr(env);
-	std::exit(1);
+	std::exit(status);
 }
 
 int	HttpRequest::waitForProccess(pid_t& proccessID) {
@@ -475,9 +486,11 @@ char**	HttpRequest::createEnvironment() {
 	std::vector<std::string>	envVector;
 
 	envVector.push_back("PATH_INFO=" + m_filePath);
+	envVector.push_back("DOMAIN=" + m_domain);
 	envVector.push_back("REQUEST_METHOD=" + m_requestMethod);
 	envVector.push_back("QUERY_STRING=" + m_queryString);
 	envVector.push_back("CONTENT_LENGTH=" + m_contentLength);
+	envVector.push_back("CONTENT_TYPE=" + m_requestContentType);
 	envVector.push_back("UPLOAD_DIR=" + m_settings.getUploadedFilesPath());
 
 	return (vectorToCharPtrArr(envVector));
@@ -530,4 +543,8 @@ const RequestStatus&	HttpRequest::getRequestStatus() {
 
 const char* HttpRequest::CgiError::what() const throw() {
 	return ("Cgi Error");
+}
+
+const char* HttpRequest::CgiNotFound::what() const throw() {
+	return ("Cgi Not Found");
 }
