@@ -14,6 +14,7 @@
 # include <algorithm>
 # include <iterator>
 # include <numeric>
+# include <iomanip>
 
 # include <sys/socket.h>
 # include <sys/errno.h>
@@ -34,18 +35,16 @@
 # include "../src/utils/utills.hpp"
 # include "../src/classes/FileDescriptor/FileDescriptor.hpp"
 
+typedef unsigned char byte;
+typedef struct sigaction s_sigaction;
+
 typedef std::pair<std::string, std::string> StrPair;
 typedef std::vector<std::string>			StrVector;
-typedef std::string::iterator				StrIter;
-
-typedef struct sigaction s_sigaction;
+typedef std::string::iterator				StrIt;
+typedef std::vector<byte>::iterator			ByteStreamIt;
 
 extern volatile sig_atomic_t g_signalStatus;
 
 const int BUFFER_SIZE = 4096;
-
-void			fatalError(int _errno, void (*atExit)(void *) = NULL, 
-					void* trash = NULL);
-std::string*	getBufferNextLine(char buffer[BUFFER_SIZE + 1]);
 
 #endif
