@@ -36,18 +36,16 @@
 
 typedef std::pair<std::string, std::string> StrPair;
 typedef std::vector<std::string>			StrVector;
+typedef std::string::iterator				StrIter;
 
 typedef struct sigaction s_sigaction;
 
 extern volatile sig_atomic_t g_signalStatus;
 
-namespace gnl {
-	const int BUFFER_SIZE = 1024;
-}
+const int BUFFER_SIZE = 4096;
 
 void			fatalError(int _errno, void (*atExit)(void *) = NULL, 
 					void* trash = NULL);
-std::string*	getNextLine(const FileDescriptor& fd,
-					char buffer[gnl::BUFFER_SIZE + 1], bool single_call = false);
+std::string*	getBufferNextLine(char buffer[BUFFER_SIZE + 1]);
 
 #endif

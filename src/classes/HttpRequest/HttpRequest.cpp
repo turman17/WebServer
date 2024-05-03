@@ -13,11 +13,12 @@ HttpRequest::HttpRequest(const FileDescriptor& targetSocketFileDescriptor) :
 	m_responseBody (""),
 	m_contentType(""),
 	m_requestContentType(""),
-	m_contentLength(""), 
+	m_contentLength("0"), 
 	m_response(""),
 	m_statusCode(""),
 	m_maxBodySize(1024),
-	m_requestStatus(REQUEST_RECEIVED),
+	m_requestStatus(REQUEST_NOT_READ),
+	m_parseState(FIRST_LINE),
 	m_targetSocketFileDescriptor(targetSocketFileDescriptor) {}
 
 
@@ -30,64 +31,49 @@ HttpRequest::~HttpRequest() {}
  * @return If everything goes well returns true and in case of an error returns false
  * 
 */
-bool	HttpRequest::readRequest() {
+RequestStatus	HttpRequest::readRequest() {
 
-	std::string*	firstLine(0);
-	char			gnlBuffer[gnl::BUFFER_SIZE + 1] = {0};
+	ssize_t				bytesRead = 0;
+	char				buffer[BUFFER_SIZE + 1] = {0};
+	std::string*		line(0);
 
-	try {
-		firstLine = getNextLine(m_targetSocketFileDescriptor, gnlBuffer, true);
-		if (!firstLine) {
-			return (false);
+	bytesRead = read(m_targetSocketFileDescriptor, buffer, BUFFER_SIZE);
+	if (bytesRead <= 0) {
+		return (CLOSE);
+	}
+	while ((line = getBufferNextLine(buffer)) != NULL) {
+
+		if (m_parseState == FIRST_LINE) {
+			StrIter firstSpace = std_next(line->begin(), line->find_first_of(' '));
+			m_requestMethod = std::string(line->begin(), firstSpace);
+			StrIter questionMark = std::find(std_next(firstSpace), line->end(), '?');
+			StrIter secondSpace = std::find(std_next(firstSpace), line->end(), ' ');
+			if (questionMark != line->end()) {
+				m_URL = std::string(std_next(firstSpace), questionMark);
+				m_queryString = std::string(std_next(questionMark), secondSpace);
+			} else {
+				m_URL = std::string(std_next(firstSpace), secondSpace);
+			}
+			m_parseState = HEADERS;
+		} else if (m_parseState == HEADERS) {
+			if (startsWith("Host:", *line)) {
+				m_domain = strip(line->substr(line->find(":") + 2));
+			} else if (startsWith("Content-Length:", *line)) {
+				m_contentLength = line->substr(line->find(":") + 2);
+			} else if (startsWith("Content-Type:", *line)) {
+				m_requestContentType = strip(line->substr(line->find(":") + 2));
+			} else if (*line == "\n" || *line == "\r\n") {
+				m_parseState = BODY;
+			}
+		} else {
+			m_responseBody += *line;
 		}
+		delete (line);
 	}
-	catch (std ::exception& e) {
-		return (false);
+	if (static_cast<int>(m_responseBody.length()) >= std::atoi(m_contentLength.c_str())) {
+		return (REQUEST_READ);
 	}
-
-	std::string::iterator firstSpace = std_next(firstLine->begin(),
-		firstLine->find_first_of(' '));
-	m_requestMethod = std::string(firstLine->begin(), firstSpace);
-	if (m_requestMethod != "GET" && m_requestMethod != "POST" 
-			&& m_requestMethod != "DELETE") {
-				m_statusCode = NOT_IMPLEMENTED_501;
-				return (true);
-			}
-	
-	std::string::iterator questionMark = std::find(std_next(firstSpace), firstLine->end(), '?');
-	std::string::iterator secondSpace = std::find(std_next(firstSpace), firstLine->end(), ' ');
-	if (questionMark != firstLine->end()) {
-		m_URL = std::string(std_next(firstSpace), questionMark);
-		m_queryString = std::string(std_next(questionMark), secondSpace);
-	} else {
-		m_URL = std::string(std_next(firstSpace), secondSpace);
-	}
-	delete(firstLine);
-
-	bool isBody = false;
-	while (true) {
-			std::string* tmp = getNextLine(m_targetSocketFileDescriptor, gnlBuffer);
-			if (!tmp)
-				break;
-			if (!isBody && startsWith("Host:", *tmp)) {
-				m_domain = strip(tmp->substr(tmp->find(":") + 2));
-			} else if (!isBody && startsWith("Content-Length:", *tmp)) {
-				m_contentLength = tmp->substr(tmp->find(":") + 2);
-			} else if (!isBody && startsWith("Content-Type:", *tmp)) {
-				m_requestContentType = tmp->substr(tmp->find(":") + 2);
-			}
-			if (isBody) {
-				m_responseBody += *tmp;
-				if (static_cast<int>(m_responseBody.length()) >= std::atoi(m_contentLength.c_str())) {
-					break;
-				}
-			}
-			if (*tmp == "\r\n" || *tmp == "\n") {
-				isBody = true;
-			}
-			delete(tmp);
-	}
-	return (true);
+	return (REQUEST_NOT_READ);
 }
 
 
@@ -101,47 +87,53 @@ bool	HttpRequest::readRequest() {
 */
 RequestStatus	HttpRequest::performReadOperations(const std::vector<ServerBlock>& serverBlocks) {
 
-	if (m_requestStatus == REQUEST_RECEIVED) {
-		if (!readRequest()) {
-			m_requestStatus = http::CLOSE;
+	switch (readRequest()) {
+
+		case CLOSE:
+			m_requestStatus = CLOSE;
 			throw CloseConnection();
-		} else if (m_statusCode == NOT_IMPLEMENTED_501) {
-			buildErrorPage(NOT_IMPLEMENTED_501);
+		case REQUEST_READ:
+			m_requestStatus = REQUEST_READ;
+			break;
+		default:
+			return (REQUEST_NOT_READ);
+	}
+	assignSettings(serverBlocks);
+	if (unknownMethod()) {
+		buildErrorPage(http::NOT_IMPLEMENTED_501);
+		return (ERROR);
+	}
+	StrVector allowedMethods = m_settings.getAllowedMethods();
+	if (std::find(allowedMethods.begin(), allowedMethods.end(),
+		m_requestMethod) == allowedMethods.end()) {
+			buildErrorPage(http::FORBIDDEN_403);
+			return (ERROR);
+		} else if (std::atoi(m_contentLength.c_str()) > m_maxBodySize) {
+			buildErrorPage(http::CONTENT_TOO_LARGE_413);
+			return (ERROR);
+		}
+	if (m_settings.getRedirection().first != "" && m_settings.getRedirection().second != "") {
+		m_statusCode = m_settings.getRedirection().first;
+		m_URL = m_settings.getRedirection().second;
+	}
+	m_filePath = m_settings.getRoot() + m_URL;
+
+	if (m_requestMethod == "DELETE") {
+		if (std::remove(m_filePath.c_str()) != 0) {
+			buildErrorPage(NOT_FOUND_404);
 			return (http::ERROR);
 		}
-		assignSettings(serverBlocks);
-		StrVector allowedMethods = m_settings.getAllowedMethods();
-		if (std::find(allowedMethods.begin(), allowedMethods.end(),
-			m_requestMethod) == allowedMethods.end()) {
-				buildErrorPage(http::FORBIDDEN_403);
-				return (http::ERROR);
-			} else if (std::atoi(m_contentLength.c_str()) > m_maxBodySize) {
-				buildErrorPage(http::CONTENT_TOO_LARGE_413);
-				return (http::ERROR);
-			}
-	
-		if (m_settings.getRedirection().first != "" && m_settings.getRedirection().second != "") {
-			m_statusCode = m_settings.getRedirection().first;
-			m_URL = m_settings.getRedirection().second;
+		m_responseBody = basicHtml("Success Deleting File", "<h2>Success Deleting File</h2>");
+		return (http::OK);
+	}
+	if (m_URL.find("/cgi-bin") != m_URL.npos) {
+		try {
+			performCgi();
 		}
-		m_filePath = m_settings.getRoot() + m_URL;
-
-		if (m_requestMethod == "DELETE") {
-			if (std::remove(m_filePath.c_str()) != 0) {
-				buildErrorPage(NOT_FOUND_404);
-				return (http::ERROR);
-			}
-			m_responseBody = basicHtml("Success Deleting File", "<h2>Success Deleting File</h2>");
-			return (http::OK);
+		catch (const CgiNotFound&) {
+			buildErrorPage(NOT_FOUND_404);
+			return (http::ERROR);
 		}
-		if (m_URL.find("/cgi-bin") != m_URL.npos) {
-			try {
-				performCgi();
-			}
-			catch (const CgiNotFound&) {
-				buildErrorPage(NOT_FOUND_404);
-				return (http::ERROR);
-			}
 			catch (const std::exception& e) {
 				buildErrorPage(INTERNAL_ERROR_500);
 				return (http::ERROR);
@@ -164,8 +156,6 @@ RequestStatus	HttpRequest::performReadOperations(const std::vector<ServerBlock>&
 		requestedFile.close();
 		m_statusCode = OK_200;
 		return (http::OK);
-	}
-	return http::CLOSE;
 }
 
 
@@ -229,7 +219,14 @@ void	HttpRequest::assignSettings(const std::vector<ServerBlock>& serverBlocks) {
 void	HttpRequest::buildErrorPage(const std::string& errorCode) {
 
 	std::ifstream errorFile((m_errorPages[errorCode]).c_str());
-	
+
+	if (errorFile.fail()) {
+		std::cout << strerror(errno) << std::endl;
+		m_responseBody = basicHtml("500", "<h2>500 Internal Server Error</h2>");
+		m_statusCode = "500";
+		return;
+	}
+
 	m_filePath = m_errorPages[errorCode];
 	ifstreamToString(errorFile, m_responseBody);
 	errorFile.close();
@@ -512,6 +509,11 @@ void	HttpRequest::sendResponse() {
 	write(m_targetSocketFileDescriptor, m_response.c_str(), m_response.length());
 	m_requestStatus = http::CLOSE;
 	throw CloseConnection();
+}
+
+bool HttpRequest::unknownMethod() {
+	return (m_requestMethod != "GET" && m_requestMethod != "POST"
+				&& m_requestMethod != "DELETE");
 }
 
 

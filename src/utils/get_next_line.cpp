@@ -4,27 +4,15 @@
 static int			line_updater(std::string*& line, char buffer[]);
 static std::string*	ft_strjoinm(const std::string& s1, const std::string& s2);
 static void			buffer_clear(char *buffer);
-static void			free_line(std::string *line);
 
-std::string*	getNextLine(const FileDescriptor& fd, char buffer[gnl::BUFFER_SIZE + 1], bool single_call)
+std::string*	getBufferNextLine(char buffer[BUFFER_SIZE + 1])
 {
 	std::string*	line = NULL;
 	int				flag;
-	int				bytesRead;
 
-	if (gnl::BUFFER_SIZE <= 0 || fd.badFileDescriptor())
-		throw BadFileDescriptor();
-	while (1)
-	{
-		if (buffer[0] == '\0')
-		{
-			bytesRead = read(fd, buffer, gnl::BUFFER_SIZE);
-			if (bytesRead == -1 && single_call) {
-				free_line(line);
-				throw BadRead();
-			} else if (bytesRead <= 0) {
-				return (line);
-			}
+	while (true) {
+		if (buffer[0] == '\0') {
+			return (line);
 		}
 		flag = line_updater(line, buffer);
 		buffer_clear(buffer);
@@ -33,11 +21,6 @@ std::string*	getNextLine(const FileDescriptor& fd, char buffer[gnl::BUFFER_SIZE 
 	}
 }
 
-static void	free_line(std::string *line)
-{
-	if (line)
-		delete(line);
-}
 
 static int	line_updater(std::string*& line, char buffer[])
 {
@@ -70,8 +53,7 @@ static std::string*	ft_strjoinm(const std::string& s1, const std::string& s2)
 	i = 0;
 	while (s2[i] != '\0')
 	{
-		if (s2[i] != '\r')
-			*s3 += s2[i];
+		*s3 += s2[i];
 		if (s2[i] == '\n') {
 			break ;
 		}

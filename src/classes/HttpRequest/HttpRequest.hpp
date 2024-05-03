@@ -19,19 +19,25 @@ namespace http {
 	const char FORBIDDEN_403[] = "403";
 
 	enum RequestStatus {
-		REQUEST_RECEIVED,
+		REQUEST_NOT_READ,
+		REQUEST_READ,
 		ERROR,
 		OK,
 		CGI,
 		CLOSE
 	};
 
+	enum ParseState {
+		FIRST_LINE,
+		HEADERS,
+		BODY
+	};
 
 	class HttpRequest {
 	public:
 								HttpRequest(const FileDescriptor& targetSocketFileDescriptor);
 								~HttpRequest();
-		bool					readRequest();
+		RequestStatus			readRequest();
 		RequestStatus			performReadOperations(const std::vector<ServerBlock>& serverBlocks);
 		void					sendResponse();
 		void					assignSettings(const std::vector<ServerBlock>& serverBlocks);
@@ -60,6 +66,7 @@ namespace http {
 		int									m_maxBodySize;
 		LocationBlock						m_settings;
 		enum http::RequestStatus			m_requestStatus;
+		enum http::ParseState				m_parseState;
 		const FileDescriptor				m_targetSocketFileDescriptor;
 
 		
@@ -75,6 +82,7 @@ namespace http {
 		int				waitForProccess(pid_t& proccessID);
 		char**			createEnvironment();
 		void			readResponseFromCgi(int outputPipe[2]);
+		bool			unknownMethod();
 
 		//* Exceptions
 
