@@ -39,7 +39,8 @@ void	Server::run() {
 					std::cout << "\nCan read request on file descriptor " << newEvent.fd() << std::endl;
 					status = activeRequest->performReadOperations(m_serverBlocks);
 					activeRequest->setRequestStatus(status);
-					m_eventsManager.mod(newEvent.fd(), WRITE_OPERATIONS);
+					if (status != http::REQUEST_NOT_READ)
+						m_eventsManager.mod(newEvent.fd(), WRITE_OPERATIONS);
 				} else if (newEvent.isWritable()) {
 					std::cout << "\nCan send response on file descriptor " << newEvent.fd() << "\n";
 					activeRequest = m_clientsMap[newEvent.fd()];
