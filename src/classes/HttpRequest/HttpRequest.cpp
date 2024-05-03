@@ -349,7 +349,8 @@ bool		HttpRequest::performDirectoryListing() {
 	if (!directory) {
 		return (false);
 	}
-	htmlBody += "\t<ul>\n";
+	htmlBody += "\t<div class=\"container py-5 text-center\">\n";
+	htmlBody += "\t<ul class=\"list-group\">\n";
 	do {
 		entry = readdir(directory);
 		if (!entry) {
@@ -361,12 +362,13 @@ bool		HttpRequest::performDirectoryListing() {
         	path += '/';
     	}
 		path += entryName;
-		htmlBody +=	"\t\t<li>\n"
+		htmlBody +=	"\t\t<li class=\"list-group-item\">\n"
 						"\t\t\t<a href=\"" + path + "\" >" + entryName + "</a>\n"
 					"\t\t</li>\n";
 	} while (entry);
 	closedir(directory);
 	htmlBody += "\t</ul>\n";
+	htmlBody += "\t</div>\n";
 	m_responseBody = basicHtml("Directory Listing", htmlBody);
 	m_contentType = "text/html";
 	return (true);
