@@ -54,6 +54,7 @@
 		"cerrno": "cpp",
 		"csignal": "cpp",
 		"ctime": "cpp",
-		"ratio": "cpp"
+		"ratio": "cpp",
+		"iomanip": "cpp"
 	}
 }
