@@ -142,3 +142,7 @@ const char* EventPoll::EventPollException::what() const throw() {
 
 EventPoll::EventPollException::~EventPollException() throw() {}
 
+
+const char* EventPoll::NoMoreNewEvents::what() const throw() {
+	return ("No more new events");
+}

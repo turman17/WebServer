@@ -34,43 +34,45 @@ HttpRequest::~HttpRequest() {}
 RequestStatus	HttpRequest::readRequest() {
 
 	ssize_t				bytesRead = 0;
+	unsigned int		offset = 0;
 	char				buffer[BUFFER_SIZE + 1] = {0};
-	std::string*		line(0);
+	std::vector<byte>*	line(0);
 
 	bytesRead = read(m_targetSocketFileDescriptor, buffer, BUFFER_SIZE);
 	if (bytesRead <= 0) {
 		return (CLOSE);
 	}
-	while ((line = getBufferNextLine(buffer)) != NULL) {
+	while ((line = getBufferNextLine(buffer, bytesRead, offset, m_parseState == BODY)) != NULL) {
 
 		if (m_parseState == FIRST_LINE) {
-			StrIter firstSpace = std_next(line->begin(), line->find_first_of(' '));
-			m_requestMethod = std::string(line->begin(), firstSpace);
-			StrIter questionMark = std::find(std_next(firstSpace), line->end(), '?');
-			StrIter secondSpace = std::find(std_next(firstSpace), line->end(), ' ');
+			ByteStreamIt firstSpace = std::find(line->begin(), line->end(), ' ');
+			m_requestMethod = strip(std::string(line->begin(), firstSpace));
+			ByteStreamIt questionMark = std::find(std_next(firstSpace), line->end(), '?');
+			ByteStreamIt secondSpace = std::find(std_next(firstSpace), line->end(), ' ');
 			if (questionMark != line->end()) {
-				m_URL = std::string(std_next(firstSpace), questionMark);
-				m_queryString = std::string(std_next(questionMark), secondSpace);
+				m_URL = decodeUrl(strip(std::string(std_next(firstSpace), questionMark)));
+				m_queryString = strip(std::string(std_next(questionMark), secondSpace));
 			} else {
-				m_URL = std::string(std_next(firstSpace), secondSpace);
+				m_URL = decodeUrl(strip(std::string(std_next(firstSpace), secondSpace)));
 			}
 			m_parseState = HEADERS;
 		} else if (m_parseState == HEADERS) {
-			if (startsWith("Host:", *line)) {
-				m_domain = strip(line->substr(line->find(":") + 2));
-			} else if (startsWith("Content-Length:", *line)) {
-				m_contentLength = line->substr(line->find(":") + 2);
-			} else if (startsWith("Content-Type:", *line)) {
-				m_requestContentType = strip(line->substr(line->find(":") + 2));
-			} else if (*line == "\n" || *line == "\r\n") {
+			std::string lineStr = std::string(line->begin(), line->end());
+			if (startsWith("Host:", lineStr)) {
+				m_domain = strip(lineStr.substr(lineStr.find(":") + 2));
+			} else if (startsWith("Content-Length:", lineStr)) {
+				m_contentLength = lineStr.substr(lineStr.find(":") + 2);
+			} else if (startsWith("Content-Type:", lineStr)) {
+				m_requestContentType = strip(lineStr.substr(lineStr.find(":") + 2));
+			} else if (lineStr == "\n" || lineStr == "\r\n") {
 				m_parseState = BODY;
 			}
 		} else {
-			m_responseBody += *line;
+			m_requestBody.insert(m_requestBody.end(), line->begin(), line->end());
 		}
 		delete (line);
 	}
-	if (static_cast<int>(m_responseBody.length()) >= std::atoi(m_contentLength.c_str())) {
+	if (static_cast<int>(m_requestBody.size()) >= std::atoi(m_contentLength.c_str())) {
 		return (REQUEST_READ);
 	}
 	return (REQUEST_NOT_READ);
@@ -90,8 +92,7 @@ RequestStatus	HttpRequest::performReadOperations(const std::vector<ServerBlock>&
 	switch (readRequest()) {
 
 		case CLOSE:
-			m_requestStatus = CLOSE;
-			throw CloseConnection();
+			return (CLOSE);
 		case REQUEST_READ:
 			m_requestStatus = REQUEST_READ;
 			break;
@@ -386,7 +387,7 @@ void	HttpRequest::performCgi() {
 	FileDescriptor(outputPipe[0]).setNonBlocking();
 
 	if (m_requestMethod == "POST") {
-		write(inputPipe[1], m_responseBody.c_str(), std::atoi(m_contentLength.c_str()));
+		write(inputPipe[1], m_requestBody.data(), std::atoi(m_contentLength.c_str()));
 		close(inputPipe[1]);
 	}
 
@@ -509,8 +510,7 @@ void	HttpRequest::sendResponse() {
 						"\r\n" + m_responseBody;
 	}
 	write(m_targetSocketFileDescriptor, m_response.c_str(), m_response.length());
-	m_requestStatus = http::CLOSE;
-	throw CloseConnection();
+	m_requestStatus = CLOSE;
 }
 
 bool HttpRequest::unknownMethod() {

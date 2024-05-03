@@ -57,6 +57,7 @@ namespace http {
 		std::string							m_filePath;
 		std::string							m_queryString;
 		std::string							m_responseBody;
+		std::vector<char>					m_requestBody;
 		std::string							m_contentType;
 		std::string							m_requestContentType;
 		std::string							m_contentLength;

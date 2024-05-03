@@ -1,13 +1,5 @@
 #include "stdlibraries.hpp"
 
-void	fatalError(int _errno, void (*atExit)(void *), void* trash) {
-	std::cerr << "Error: " << strerror(_errno) << " (fatal)" << std::endl;
-	if (atExit && trash)
-		atExit(trash);
-	std::exit(10);
-}
-
-
 bool	startsWith(const std::string& toExpect, const std::string& text) {
 
 	int start = 0;
@@ -136,11 +128,19 @@ std::string	strip(const std::string& str) {
 }
 
 
-const char* CloseConnection::what() const throw() {
-	return ("Close active connection ASAP");
-}
+std::string decodeUrl(const std::string& url) {
 
-
-const char* NoMoreNewEvents::what() const throw() {
-	return ("No more new events");
+	std::ostringstream OStream;
+	for (std::size_t i = 0; i < url.size(); i++) {
+		if (url[i] == '%') {
+			int value;
+			std::stringstream stringStream(url.substr(i + 1, 2));
+			stringStream >> std::hex >> value;
+			OStream << static_cast<char>(value);
+			i += 2;
+		} else {
+			OStream << url[i];
+		}
+	}
+	return OStream.str();
 }

@@ -1,80 +1,20 @@
 #include "webserv.hpp"
 
-
-static int			line_updater(std::string*& line, char buffer[]);
-static std::string*	ft_strjoinm(const std::string& s1, const std::string& s2);
-static void			buffer_clear(char *buffer);
-
-std::string*	getBufferNextLine(char buffer[BUFFER_SIZE + 1])
+std::vector<byte>*	getBufferNextLine(char* buffer, const  ssize_t& bytesRead, unsigned int& offset, const bool& isBody)
 {
-	std::string*	line = NULL;
-	int				flag;
+	std::vector<byte>* line = NULL;
 
-	while (true) {
-		if (buffer[0] == '\0') {
-			return (line);
+	if (offset < bytesRead) {
+		line = new std::vector<byte>;
+	}
+	while (offset < bytesRead) {
+
+		line->push_back(buffer[offset]);
+		if (!isBody && buffer[offset] == '\n') {
+			offset++;
+			break;
 		}
-		flag = line_updater(line, buffer);
-		buffer_clear(buffer);
-		if (flag == 1)
-			return (line);
+		offset++;
 	}
-}
-
-
-static int	line_updater(std::string*& line, char buffer[])
-{
-	try {
-		std::string* join = ft_strjoinm(line ? *line : "", buffer);
-		if (line)
-			delete(line);
-		line = join;
-		if (line->find('\n') != std::string::npos) {
-			return (1);
-		}
-		return (0);
-	}
-	catch (const std::exception&) {
-		if (line)
-			delete(line);
-		throw;
-	}
-}
-
-static std::string*	ft_strjoinm(const std::string& s1, const std::string& s2)
-{
-	std::string *s3;
-	int			i;
-	
-	s3 = new std::string;
-	i = 0;
-	while (s1[i] != '\0')
-		*s3 += s1[i++];
-	i = 0;
-	while (s2[i] != '\0')
-	{
-		*s3 += s2[i];
-		if (s2[i] == '\n') {
-			break ;
-		}
-		i++;
-	}
-	return (s3);
-}
-
-static void	buffer_clear(char *buffer)
-{
-	int	j;
-	int	i;
-
-	i = 0;
-	j = -1;
-	while (buffer[i])
-	{
-		if (j != -1)
-			buffer[j++] = buffer[i];
-		else if (j == -1 && buffer[i] == '\n')
-			j = 0;
-		buffer[i++] = '\0';
-	}
+	return line;
 }
