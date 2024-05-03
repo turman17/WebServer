@@ -124,6 +124,7 @@ RequestStatus	HttpRequest::performReadOperations(const std::vector<ServerBlock>&
 			buildErrorPage(NOT_FOUND_404);
 			return (http::ERROR);
 		}
+		m_statusCode = OK_200;
 		m_responseBody = basicHtml("Success Deleting File", "<h2>Success Deleting File</h2>");
 		return (http::OK);
 	}
@@ -175,16 +176,19 @@ void	HttpRequest::assignSettings(const std::vector<ServerBlock>& serverBlocks) {
 	for (std::vector<ServerBlock>::const_iterator it = serverBlocks.begin();
 		it != serverBlocks.end(); std::advance(it, 1)) {
 
-			if (m_port != (*it).getPort()
-				|| (normalizeHostname((*it).getHostname()) != "0.0.0.0" 
-				&& normalizeHostname(m_hostname) != normalizeHostname((*it).getHostname()))) {
+			if (m_port != it->getPort()
+				|| (normalizeHostname(it->getHostname()) != "0.0.0.0" 
+				&& normalizeHostname(m_hostname) != normalizeHostname(it->getHostname()))) {
 					continue;
 			}
 			if (i == 0) {
 				defaultServerBlock = &(*it);
 				i++;
 			}
-			if (m_domain == (*it).getServerName()) {
+			std::stringstream	strStream;
+			strStream << it->getPort();
+			std::string	domain(it->getServerName() + ":" + strStream.str());
+			if (m_domain == domain) {
 				selectedServerBlock = &(*it);
 				break;
 			}
