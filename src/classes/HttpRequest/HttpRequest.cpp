@@ -376,6 +376,7 @@ bool		HttpRequest::performDirectoryListing() {
 	htmlBody += "\t</div>\n";
 	m_responseBody = basicHtml("Directory Listing", htmlBody);
 	m_contentType = "text/html";
+	m_statusCode = OK_200;
 	return (true);
 }
 
@@ -513,6 +514,7 @@ void	HttpRequest::sendResponse() {
 						"Content-Length: " + expandContentLength() + "\r\n"
 						"\r\n" + m_responseBody;
 	}
+
 	write(m_targetSocketFileDescriptor, m_response.c_str(), m_response.length());
 	m_requestStatus = CLOSE;
 }
