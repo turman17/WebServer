@@ -45,26 +45,7 @@ Run the server by executing:
 
 Once running, the server will listen on a predefined port and serve requests. You can visit `http://localhost:PORT/` in your web browser where `PORT` is the port number on which the server is listening.
 
-## Contributing
-
-We welcome contributions from the community. Here’s how you can contribute:
-
-1. Fork the Project
-2. Create your Feature Branch (`git checkout -b feature/YourFeature`)
-3. Commit your Changes (`git commit -m 'Add some YourFeature'`)
-4. Push to the Branch (`git push origin feature/YourFeature`)
-5. Open a Pull Request
-
-## License
-
-Distributed under the MIT License. See `LICENSE` for more information.
-
 ## Authors
 
 - [tlouro-c](https://github.com/tlouro-c)
 - [turman17](https://github.com/turman17)
-
-## Acknowledgments
-
-- Inspiration from existing open-source web servers
-- Contributors and community members
