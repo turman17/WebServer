@@ -1,13 +1,8 @@
 # WebServer
 
-This WebServer project is an open-source initiative aimed at building a high-performance web server in C++. It's designed to handle multiple simultaneous connections, making it suitable for educational purposes and small to medium scale deployments.
-
 ## Features
 
 - **HTTP/1.1 Support:** Handles basic HTTP/1.1 requests.
-- **Concurrency:** Utilizes multi-threading to manage multiple connections simultaneously.
-- **Logging:** Basic logging functionalities to track requests and responses.
-- **Error Handling:** Proper handling of client and server errors.
 - **Static Content:** Serves static web pages and files.
 
 ## Installation
