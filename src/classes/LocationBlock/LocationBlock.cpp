@@ -88,4 +88,3 @@ const bool&			LocationBlock::getDirectoryListing() const {
 void				LocationBlock::setDirectoryListing(const bool&	directoryListing) {
 	m_directoryListing = directoryListing;
 }
-

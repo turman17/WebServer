@@ -31,7 +31,7 @@ public:
 	void	add(const FileDescriptor& fileDescriptor, uint32_t eventsToNotify) const;
 	void	mod(const FileDescriptor& fileDescriptor, uint32_t eventsToNotify) const;
 	void	remove(const FileDescriptor& fileDescriptor) const;
-	void	waitForEvents() const;
+	bool	waitForEvents() const;
 	Event	getNextEvent() const;
 
 

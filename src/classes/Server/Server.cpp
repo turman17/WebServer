@@ -24,7 +24,9 @@ void	Server::run() {
 	setupEpoll();
 	while (true && g_signalStatus == 0) {
 		try {
-			m_eventsManager.waitForEvents();
+			if (!m_eventsManager.waitForEvents()) {
+				m_clientsMap.removeClosedConnections(m_eventsManager);
+			}
 		}
 		catch (const std::exception&) {
 			return;
@@ -36,19 +38,21 @@ void	Server::run() {
 					acceptNewConnection(newEvent);
 				} else if (newEvent.isReadable()) {
 					activeRequest = m_clientsMap[newEvent.fd()];
-					std::cout << "\nCan read request on file descriptor " << newEvent.fd() << std::endl;
 					if (activeRequest->getRequestStatus() == http::CLOSE)
 						continue;
 					status = activeRequest->performReadOperations(m_serverBlocks);
 					activeRequest->setRequestStatus(status);
-					if (status != http::REQUEST_NOT_READ && status != http::CLOSE)
+					if (status != http::REQUEST_NOT_READ && status != http::CLOSE) {
 						m_eventsManager.mod(newEvent.fd(), WRITE_OPERATIONS);
+					}
 				} else if (newEvent.isWritable()) {
-					std::cout << "\nCan send response on file descriptor " << newEvent.fd() << "\n";
 					activeRequest = m_clientsMap[newEvent.fd()];
 					if (activeRequest->getRequestStatus() == http::CLOSE)
 						continue;
 					activeRequest->sendResponse();
+					if (activeRequest->getRequestStatus() == http::REQUEST_NOT_READ) {
+						m_eventsManager.mod(newEvent.fd(), READ_OPERATIONS);
+					}
 				}
 			}
 			catch (const std::exception&) {
@@ -213,6 +217,11 @@ void	Server::assignServerBlockSetting(const std::string& line, ServerBlock& serv
 		if (valueStream.fail())
 			throw BadConfig();
 		serverBlock.setRoot(tmp);
+	} else if (directive == "scripts_path") {
+		valueStream >> tmp;
+		if (valueStream.fail())
+			throw BadConfig();
+		serverBlock.setScriptsPath(tmp);
 	}
 	else if (directive == "error_page") {
 		if (countWords(value) != 2) {

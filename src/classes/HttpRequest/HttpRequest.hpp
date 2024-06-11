@@ -33,6 +33,13 @@ namespace http {
 		BODY
 	};
 
+	enum CGIStatus {
+		CGI_NOT_RUNNING,
+		CGI_RUNNING,
+		CGI_DONE,
+		CGI_ERROR
+	};
+
 	class HttpRequest {
 	public:
 								HttpRequest(const FileDescriptor& targetSocketFileDescriptor);
@@ -46,6 +53,11 @@ namespace http {
 		void					setDomain(const std::string& domain);
 		void					setRequestStatus(const RequestStatus& status);
 		const RequestStatus&	getRequestStatus();
+		const CGIStatus&		getCgiStatus();
+		void					buildErrorPage(const std::string& errorCode);
+		void					monitorCgiRunTime();
+		void					reset();
+		timeval					getStartTimeRequest();
 
 	private:
 		std::string							m_hostname;
@@ -60,6 +72,7 @@ namespace http {
 		std::vector<char>					m_requestBody;
 		std::string							m_contentType;
 		std::string							m_requestContentType;
+		std::string							m_requestConnection;
 		std::string							m_contentLength;
 		std::string							m_response;
 		std::string							m_statusCode;
@@ -68,21 +81,22 @@ namespace http {
 		LocationBlock						m_settings;
 		enum http::RequestStatus			m_requestStatus;
 		enum http::ParseState				m_parseState;
+		timeval								m_startTimeRequest;
+		pid_t								m_cgiPid;
+		enum http::CGIStatus				m_cgiStatus;
 		const FileDescriptor				m_targetSocketFileDescriptor;
+		std::string							m_scriptsPath;
 
 		
 		//* Private methods
 						HttpRequest();
-		void			buildErrorPage(const std::string& errorCode);
 		std::string		expandStatusCode();
 		std::string		expandContentType();
 		std::string		expandContentLength();
 		bool			performDirectoryListing();
-		void			performCgi();
-		void			childProccess(int outputPipe[2], int inputPipe[2]);
-		int				waitForProccess(pid_t& proccessID);
+		CGIStatus		performCgi();
+		void			childProccess(int inputPipe[2]);
 		char**			createEnvironment();
-		void			readResponseFromCgi(int outputPipe[2]);
 		bool			unknownMethod();
 
 		//* Exceptions

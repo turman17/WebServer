@@ -31,7 +31,6 @@ public:
 
 private:
 	int 		m_fd;
-	mutable int	m_isOpen;
 };
 
 #endif

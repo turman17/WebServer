@@ -91,20 +91,24 @@ void	EventPoll::remove(const FileDescriptor& fileDescriptor) const {
  * @throw  In case of an error throws and exception of type `EventPollException` (std::exception)
  * 
 */
-void	EventPoll::waitForEvents() const {
+bool	EventPoll::waitForEvents() const {
 
 	epoll_event newEvents[MAX_EVENTS / 4];
 
-	int newEventsNum = epoll_wait(m_fileDescriptor, newEvents, MAX_EVENTS / 4, -1);
+	int newEventsNum = epoll_wait(m_fileDescriptor, newEvents, MAX_EVENTS / 4, 1);
 	if (newEventsNum == -1) {
 		throw EventPollException("epoll_wait() " + std::string (std::strerror(errno)));
+	} else if (newEventsNum == 0) {
+		return (false);
 	}
+	
 
 	for (int i = 0; i < newEventsNum; i++) {
 		if (newEvents[i].data.fd != STDIN_FILENO && newEvents[i].data.fd != STDOUT_FILENO) {
 			m_newEvents.push_back(Event(newEvents[i].data.fd, newEvents[i].events));
 		}
 	}
+	return (true);
 }
 
 

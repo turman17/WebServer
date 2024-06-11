@@ -20,6 +20,8 @@ public:
 	void				setServerName(const std::string& serverName);
 	const std::string&	getRoot() const;
 	void				setRoot(const std::string root);
+	const std::string&	getScriptsPath() const;
+	void				setScriptsPath(const std::string scriptsPath);
 	const std::map<std::string, std::string>&	getErrorPages() const;
 	void				addErrorPage (const std::string& errorCode,
 							const std::string& path);
@@ -32,6 +34,7 @@ private:
 	std::string	m_hostname;
 	std::string	m_serverName;
 	std::string	m_root;
+	std::string m_scriptsPath;
 	std::map<std::string, std::string>	m_errorPages;
 	std::vector<LocationBlock>	m_LocationBlocks;
 

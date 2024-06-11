@@ -10,7 +10,8 @@ class Clients {
 public:
 	void				addToSocketMap(const FileDescriptor& fd, http::HttpRequest* request);
 	http::HttpRequest*	delFromSocketMap(const FileDescriptor& fd);
-	void			removeClosedConnections(EventPoll& eventManager);	
+	void				removeClosedConnections(EventPoll& eventManager);	
+	void				sanitizeCGI(EventPoll& eventManager);
 
 	http::HttpRequest* & operator[](const FileDescriptor& key);
 	

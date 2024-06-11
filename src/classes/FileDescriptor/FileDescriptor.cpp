@@ -14,16 +14,13 @@ namespace unistd {
 	}
 };
 
-FileDescriptor::FileDescriptor() : m_fd(-1) , m_isOpen(false) {}
+FileDescriptor::FileDescriptor() : m_fd(-1) {}
 
 
-FileDescriptor::FileDescriptor(const int& fd) : m_fd(fd), m_isOpen(false) {
+FileDescriptor::FileDescriptor(const int& fd) : m_fd(fd){
 
 	if (m_fd == -1) {
 		return;
-	}
-	if (fcntl(m_fd, F_GETFL) != -1) {
-		m_isOpen = true;
 	}
 }
 
@@ -40,7 +37,6 @@ FileDescriptor& FileDescriptor::operator=(const FileDescriptor& other) {
 
 	if (this != &other) {
 		this->m_fd = other.m_fd;
-		this->m_isOpen = other.m_isOpen;
 	}
 	return (*this);
 }
@@ -55,43 +51,23 @@ const int&	FileDescriptor::get() const {
 
 
 void	FileDescriptor::set(const int& fd) {
-
 	m_fd = fd;
-	if (m_fd == -1) {
-		m_isOpen = false;
-		return;
-	}
-
-	if (fcntl(m_fd, F_GETFL) != -1) {
-		m_isOpen = true;
-	}
-	else {
-		m_isOpen = false;
-	}
 }
 
 
 void	FileDescriptor::close() const {
-	if (m_isOpen) {
+	if (m_fd != -1) {
 		unistd::close(m_fd);
 	}
-	m_isOpen = false;
 }
 
 void	FileDescriptor::setNonBlocking() const {
-
-	int flags = fcntl(m_fd, F_GETFL, 0);
-
-	if (!(flags & O_NONBLOCK)) {
-		flags |= O_NONBLOCK;
-		fcntl(m_fd, F_SETFL, flags);
-	}
+	fcntl(m_fd, F_SETFL, O_NONBLOCK);
 }
 
 bool		FileDescriptor::badFileDescriptor() const {
 
-	int flags = fcntl(m_fd, F_GETFL, 0);
-	if (!flags || !m_isOpen) {
+	if (m_fd == -1) {
 		return (true);
 	}
 	return (false);
