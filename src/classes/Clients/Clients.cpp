@@ -7,6 +7,9 @@ void	Clients::addToSocketMap(const FileDescriptor& fd, HttpRequest* request) {
 	m_socketToRequestMap.insert(std::make_pair(fd, request));
 }
 
+void	Clients::addToPipeMap(const FileDescriptor& fd, HttpRequest* request) {
+	m_pipeReadToRequestMap.insert(std::make_pair(fd, request));
+}
 
 HttpRequest*	Clients::delFromSocketMap(const FileDescriptor& fd) {
 
@@ -16,6 +19,17 @@ HttpRequest*	Clients::delFromSocketMap(const FileDescriptor& fd) {
 	}
 	HttpRequest* request = it->second;
 	m_socketToRequestMap.erase(it);
+	return (request);
+}
+
+HttpRequest*	Clients::delFromPipeMap(const FileDescriptor& fd) {
+
+	http::Iterator it = m_pipeReadToRequestMap.find(fd);
+	if (it == m_pipeReadToRequestMap.end()) {
+		throw MapEntryNotFound();
+	}
+	HttpRequest* request = it->second;
+	m_pipeReadToRequestMap.erase(it);
 	return (request);
 }
 
@@ -38,9 +52,34 @@ void	Clients::removeClosedConnections(EventPoll& eventManager) {
 			eventManager.remove(it->first);
 			delete it->second;
 			m_socketToRequestMap.erase(it);
+		} else {
+			if (it->second->monitorCgiRunTime() == http::CGI_ERROR) {
+				it->second->buildErrorPage(http::INTERNAL_ERROR_500);
+				it->second->setRequestStatus(http::ERROR);
+				eventManager.mod(it->first, WRITE_OPERATIONS);
+			}
 		}
 		it = next;
 	}
+}
+
+FileDescriptor Clients::getSocketByPipe(FileDescriptor pipeRead) {
+
+	http::HttpRequest* request = m_pipeReadToRequestMap[pipeRead];
+
+	return (getSocketByRequest(request));
+}
+
+FileDescriptor Clients::getSocketByRequest(http::HttpRequest* request) {
+
+	http::Iterator it = m_socketToRequestMap.begin();
+	while (it != m_socketToRequestMap.end()) {
+		if (it->second == request) {
+			return (it->first);
+		}
+		it++;
+	}
+	throw MapEntryNotFound();
 }
 
 
@@ -49,6 +88,11 @@ HttpRequest*& Clients::operator[](const FileDescriptor& key) {
 	http::Iterator it = m_socketToRequestMap.find(key);
 	if (it != m_socketToRequestMap.end()) {
 		return (it->second);
+	}
+
+	http::Iterator it2 = m_pipeReadToRequestMap.find(key);
+	if (it2 != m_pipeReadToRequestMap.end()) {
+		return (it2->second);
 	}
 	throw MapEntryNotFound();
 }

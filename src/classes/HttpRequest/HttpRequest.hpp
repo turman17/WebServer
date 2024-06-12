@@ -24,6 +24,7 @@ namespace http {
 		ERROR,
 		OK,
 		CGI,
+		CGI_COMPLETE,
 		CLOSE
 	};
 
@@ -37,6 +38,7 @@ namespace http {
 		CGI_NOT_RUNNING,
 		CGI_RUNNING,
 		CGI_DONE,
+		CGI_READ,
 		CGI_ERROR
 	};
 
@@ -55,9 +57,14 @@ namespace http {
 		const RequestStatus&	getRequestStatus();
 		const CGIStatus&		getCgiStatus();
 		void					buildErrorPage(const std::string& errorCode);
-		void					monitorCgiRunTime();
+		CGIStatus				monitorCgiRunTime();
 		void					reset();
 		timeval					getStartTimeRequest();
+		CGIStatus				performCgi();
+		int						getCgiOutputFd();
+		void					setCgiOutputFd(int fd);
+		pid_t					getCgiPid();
+		FileDescriptor			getTargetSocketFileDescriptor();
 
 	private:
 		std::string							m_hostname;
@@ -82,11 +89,12 @@ namespace http {
 		enum http::RequestStatus			m_requestStatus;
 		enum http::ParseState				m_parseState;
 		timeval								m_startTimeRequest;
-		pid_t								m_cgiPid;
 		enum http::CGIStatus				m_cgiStatus;
 		const FileDescriptor				m_targetSocketFileDescriptor;
 		std::string							m_scriptsPath;
 		std::string							m_uploadedFilesPath;
+		int									m_CgiOutputFd;
+		pid_t								m_cgiPid;
 
 		
 		//* Private methods
@@ -95,8 +103,7 @@ namespace http {
 		std::string		expandContentType();
 		std::string		expandContentLength();
 		bool			performDirectoryListing();
-		CGIStatus		performCgi();
-		void			childProccess(int inputPipe[2]);
+		void			childProccess(int inputPipe[2], int outputPipe[2]);
 		char**			createEnvironment();
 		bool			unknownMethod();
 

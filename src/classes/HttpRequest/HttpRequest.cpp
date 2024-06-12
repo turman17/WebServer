@@ -23,13 +23,22 @@ HttpRequest::HttpRequest(const FileDescriptor& targetSocketFileDescriptor) :
 	m_cgiStatus(CGI_NOT_RUNNING),
 	m_targetSocketFileDescriptor(targetSocketFileDescriptor),
 	m_scriptsPath("/cgi-bin"),
-	m_uploadedFilesPath("./")
+	m_uploadedFilesPath("./"),
+	m_CgiOutputFd(-1),
+	m_cgiPid(-1)
 	{
 		gettimeofday(&m_startTimeRequest, NULL);
 	}
 
 
-HttpRequest::~HttpRequest() {}
+HttpRequest::~HttpRequest() {
+	if (m_CgiOutputFd != -1) {
+		close(m_CgiOutputFd);
+	}
+	if (m_cgiPid != -1) {
+		kill(m_cgiPid, SIGKILL);
+	}
+}
 
 
 /**
@@ -42,12 +51,11 @@ RequestStatus	HttpRequest::readRequest() {
 
 	ssize_t				bytesRead = 0;
 	unsigned int		offset = 0;
-	char				buffer[BUFFER_SIZE + 1] = {0};
+	char				buffer[BUFFER_SIZE + 1];
 	std::vector<byte>*	line(0);
 
 	bytesRead = read(m_targetSocketFileDescriptor, buffer, BUFFER_SIZE);
 	if (bytesRead <= 0) {
-		std::cout << "Closing Connection" << std::endl << std::endl;
 		return (CLOSE);
 	}
 	while ((line = getBufferNextLine(buffer, bytesRead, offset, m_parseState == BODY)) != NULL) {
@@ -99,7 +107,9 @@ RequestStatus	HttpRequest::readRequest() {
 */
 RequestStatus	HttpRequest::performReadOperations(const std::vector<ServerBlock>& serverBlocks) {
 
-	gettimeofday(&m_startTimeRequest, NULL);
+	if (m_requestStatus != REQUEST_NOT_READ) {
+		return (m_requestStatus);
+	}
 
 	switch (readRequest()) {
 
@@ -387,11 +397,13 @@ bool		HttpRequest::performDirectoryListing() {
 CGIStatus	HttpRequest::performCgi() {
 
 	if (m_cgiStatus == CGI_NOT_RUNNING) {
-		int		inputPipe[2];
+		int		inputPipe[2], outputPipe[2];
 
-		if (m_requestMethod == "POST" && pipe(inputPipe) == -1) {
+		if (pipe(outputPipe) == -1 || (m_requestMethod == "POST" && pipe(inputPipe) == -1)) {
 			throw CgiError();
 		}
+		m_CgiOutputFd = outputPipe[0];
+		fcntl(m_CgiOutputFd, F_SETFL, FD_CLOEXEC);
 		if (m_requestMethod == "POST") {
 			write(inputPipe[1], m_requestBody.data(), std::atoi(m_contentLength.c_str()));
 			close(inputPipe[1]);
@@ -401,29 +413,40 @@ CGIStatus	HttpRequest::performCgi() {
 		if (m_cgiPid == -1) {
 			throw CgiError();
 		} else if (m_cgiPid == 0) {
-			childProccess(inputPipe);
+			childProccess(inputPipe, outputPipe);
 		}
+		close(outputPipe[1]);
 		if (m_requestMethod == "POST")
 			close(inputPipe[0]);
 		m_cgiStatus = CGI_RUNNING;
+	} else if (m_cgiStatus == CGI_DONE) {
+		char buffer[BUFFER_SIZE] = {0};
+
+		ssize_t bytesRead = read(m_CgiOutputFd, buffer, BUFFER_SIZE - 1);
+		if (bytesRead < 0) {
+			throw CgiError();
+		} else if (bytesRead == 0) {
+			m_cgiStatus = CGI_READ;
+			return (m_cgiStatus);
+		}
+		m_response += std::string(buffer, bytesRead);
 	}
-	
-	monitorCgiRunTime();
 	return (m_cgiStatus);
 }
 
 
-void	HttpRequest::childProccess(int inputPipe[2]) {
+void	HttpRequest::childProccess(int inputPipe[2], int outputPipe[2]) {
 
-	if (dup2(m_targetSocketFileDescriptor, STDOUT_FILENO) == -1 || (m_requestMethod == "POST"
+	close(outputPipe[0]);
+	if (dup2(outputPipe[1], STDOUT_FILENO) == -1 || (m_requestMethod == "POST"
 			&& dup2(inputPipe[0], STDIN_FILENO) == -1)) {
 				std::exit(1);
 			}
-	close(m_targetSocketFileDescriptor);
-	if (m_requestMethod == "POST")
-		close(inputPipe[1]);
+	close(outputPipe[1]);
+	if (m_requestMethod == "POST") {
+		close(inputPipe[0]);
+	}
 	
-
 	StrVector	argvVector;
 
 	argvVector.push_back("/usr/bin/python3");
@@ -466,24 +489,9 @@ timeval	HttpRequest::getStartTimeRequest() {
 */
 void	HttpRequest::sendResponse() {
 
-	if (m_requestStatus == http::CGI) {
-		CGIStatus cgiStatus = performCgi();
-		if (cgiStatus == CGI_DONE) {
-			if (m_requestConnection == "close") {
-				m_requestStatus = CLOSE;
-			} else {
-				m_requestStatus = REQUEST_NOT_READ;
-			}
-			return;
-		} else if (cgiStatus == CGI_ERROR) {
-			buildErrorPage(http::INTERNAL_ERROR_500);
-			m_requestStatus = ERROR;
-		} else {
-			return;
-		}
-	}
-
-	if (m_requestStatus == http::ERROR || m_requestStatus == http::OK) {
+	if (m_requestStatus == CGI) {
+		write(m_targetSocketFileDescriptor, m_response.c_str(), m_response.length());
+	} else {
 		m_response =	m_version + " " + expandStatusCode() + "\r\n"
 						"Content-Type: " + expandContentType() + "\r\n"
 						"Connection: " + m_requestConnection + "\r\n"
@@ -491,7 +499,7 @@ void	HttpRequest::sendResponse() {
 						"\r\n" + m_responseBody;
 		write(m_targetSocketFileDescriptor, m_response.c_str(), m_response.length());
 	}
-	if (m_requestConnection == "close" || m_requestStatus == http::ERROR) {
+	if (m_requestConnection == "close") {
 		m_requestStatus = CLOSE;
 	} else {
 		reset();
@@ -503,8 +511,16 @@ bool HttpRequest::unknownMethod() {
 				&& m_requestMethod != "DELETE");
 }
 
+FileDescriptor HttpRequest::getTargetSocketFileDescriptor() {
+	return (m_targetSocketFileDescriptor);
+}
 
-void	HttpRequest::monitorCgiRunTime() {
+
+CGIStatus	HttpRequest::monitorCgiRunTime() {
+
+	if (m_cgiStatus != CGI_RUNNING) {
+		return (m_cgiStatus);	
+	}
 
 	timeval		now;
 	long long	elapsed;
@@ -521,7 +537,9 @@ void	HttpRequest::monitorCgiRunTime() {
 		} else {
 			m_cgiStatus = CGI_ERROR;
 		}
+		m_cgiPid = -1;
 	}
+	return (m_cgiStatus);
 }
 
 void HttpRequest::reset() {
@@ -540,6 +558,9 @@ void HttpRequest::reset() {
 	m_requestStatus = REQUEST_NOT_READ;
 	m_parseState = FIRST_LINE;
 	m_cgiStatus = CGI_NOT_RUNNING;
+	m_CgiOutputFd = -1;
+	m_cgiPid = -1;
+	gettimeofday(&m_startTimeRequest, NULL);
 }
 
 
@@ -569,6 +590,17 @@ const CGIStatus&	HttpRequest::getCgiStatus() {
 	return (m_cgiStatus);
 }
 
+int HttpRequest::getCgiOutputFd() {
+	return (m_CgiOutputFd);
+}
+
+pid_t HttpRequest::getCgiPid() {
+	return (m_cgiPid);
+}
+
+void	HttpRequest::setCgiOutputFd(int fd) {
+	m_CgiOutputFd = fd;
+}
 
 //* Exceptions
 

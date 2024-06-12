@@ -127,6 +127,9 @@ Event	EventPoll::getNextEvent() const {
 	Event nextEvent = m_newEvents.front();
 	m_newEvents.pop_front();
 
+	std::cout << "EventPoll::getNextEvent() - fd: " << nextEvent.fd() << std::endl;
+	std::cout << "EventPoll::getNextEvent() - events: " << nextEvent.getEvents() << std::endl;
+
 	return (nextEvent);
 }
 

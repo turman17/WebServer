@@ -4,9 +4,6 @@ import sys
 
 def main():
 
-	while True:
-		print()
-
 	form = cgi.FieldStorage()
 
 	username = form.getvalue("username", "Guest")

@@ -42,8 +42,23 @@ void	Server::run() {
 						continue;
 					status = activeRequest->performReadOperations(m_serverBlocks);
 					activeRequest->setRequestStatus(status);
-					if (status != http::REQUEST_NOT_READ && status != http::CLOSE) {
-						m_eventsManager.mod(newEvent.fd(), WRITE_OPERATIONS);
+					if (status == http::CGI) {
+						http::CGIStatus cgiStatus;
+					
+						cgiStatus = activeRequest->performCgi();
+						if (cgiStatus == http::CGI_RUNNING) {
+							m_eventsManager.add(activeRequest->getCgiOutputFd(), READ_OPERATIONS);
+							m_clientsMap.addToPipeMap(activeRequest->getCgiOutputFd(), activeRequest);
+						} else if (cgiStatus == http::CGI_READ) {
+							m_eventsManager.remove(activeRequest->getCgiOutputFd());
+							m_clientsMap.delFromPipeMap(activeRequest->getCgiOutputFd());
+							close(activeRequest->getCgiOutputFd());
+							activeRequest->setCgiOutputFd(-1);
+							status = http::CGI_COMPLETE;
+						}
+					}
+					if (status != http::REQUEST_NOT_READ && status != http::CLOSE && status != http::CGI) {
+						m_eventsManager.mod(activeRequest->getTargetSocketFileDescriptor(), WRITE_OPERATIONS);
 					}
 				} else if (newEvent.isWritable()) {
 					activeRequest = m_clientsMap[newEvent.fd()];

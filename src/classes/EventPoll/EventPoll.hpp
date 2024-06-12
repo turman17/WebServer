@@ -13,8 +13,8 @@ namespace epoll {
 
 	enum EventType {
 		NEW_CONNECTION = 0,
-		READ_OPERATIONS= EPOLLIN,
-		WRITE_OPERATIONS = EPOLLOUT
+		READ_OPERATIONS= EPOLLIN | EPOLLHUP,
+		WRITE_OPERATIONS = EPOLLOUT,
 	};
 
 	typedef std::vector<ServerSocket>::const_iterator Iterator;
