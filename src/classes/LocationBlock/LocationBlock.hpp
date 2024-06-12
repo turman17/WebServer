@@ -15,8 +15,6 @@ public:
 	void				setRoot(const std::string& root);
 	const std::string&	getIndexFile() const;
 	void				setIndexFile(const std::string& indexFile);
-	const std::string&	getUploadedFilesPath() const;
-	void				setUploadedFilesPath(const std::string& uploadedFiles);
 	const StrPair&		getRedirection() const;
 	void				setRedirection(const StrPair& redirection);
 	const StrVector&	getAllowedMethods() const;
@@ -28,7 +26,6 @@ private:
 	std::string	m_routePath;
 	std::string	m_root;
 	std::string	m_indexFile;
-	std::string	m_uploadedFilesPath;
 	StrPair		m_redirection;
 	StrVector	m_allowedMethods;
 	bool		m_directoryListing;

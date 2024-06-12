@@ -1,7 +1,7 @@
 #include "LocationBlock.hpp"
 
 LocationBlock::LocationBlock() : m_routePath(""), m_root(""), m_indexFile(""),
-	m_uploadedFilesPath("./"), m_redirection(std::make_pair("", "")),
+	m_redirection(std::make_pair("", "")),
 	m_allowedMethods(), m_directoryListing(false) {
 		m_allowedMethods.push_back("GET");
 		m_allowedMethods.push_back("POST");
@@ -24,7 +24,6 @@ LocationBlock& LocationBlock::operator=(const LocationBlock& other) {
 		m_routePath = other.m_routePath;
 		m_root = other.m_root;
 		m_indexFile = other.m_indexFile;
-		m_uploadedFilesPath = other.m_uploadedFilesPath;
 		m_redirection = other.m_redirection;
 		m_allowedMethods = other.m_allowedMethods;
 		m_directoryListing = other.m_directoryListing;
@@ -54,14 +53,6 @@ const std::string&	LocationBlock::getIndexFile() const {
 
 void				LocationBlock::setIndexFile(const std::string& indexFile) {
 	m_indexFile = indexFile;
-}
-
-const std::string&	LocationBlock::getUploadedFilesPath() const {
-	return (m_uploadedFilesPath);
-}
-
-void				LocationBlock::setUploadedFilesPath(const std::string& uploadedFilesPath) {
-	m_uploadedFilesPath = uploadedFilesPath;
 }
 
 const StrPair&		LocationBlock::getRedirection() const {

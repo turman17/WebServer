@@ -22,7 +22,8 @@ HttpRequest::HttpRequest(const FileDescriptor& targetSocketFileDescriptor) :
 	m_parseState(FIRST_LINE),
 	m_cgiStatus(CGI_NOT_RUNNING),
 	m_targetSocketFileDescriptor(targetSocketFileDescriptor),
-	m_scriptsPath("/cgi-bin")
+	m_scriptsPath("/cgi-bin"),
+	m_uploadedFilesPath("./")
 	{
 		gettimeofday(&m_startTimeRequest, NULL);
 	}
@@ -210,6 +211,7 @@ void	HttpRequest::assignSettings(const std::vector<ServerBlock>& serverBlocks) {
 	if (lastMatch == "") {
 		m_settings.setRoot(selectedServerBlock->getRoot());
 	}
+	m_uploadedFilesPath = selectedServerBlock->getUploadedFilesPath();
 	m_scriptsPath = selectedServerBlock->getScriptsPath();
 	m_errorPages = selectedServerBlock->getErrorPages();
 	m_maxBodySize = selectedServerBlock->getMaxBodySize();
@@ -448,7 +450,7 @@ char**	HttpRequest::createEnvironment() {
 	envVector.push_back("QUERY_STRING=" + m_queryString);
 	envVector.push_back("CONTENT_LENGTH=" + m_contentLength);
 	envVector.push_back("CONTENT_TYPE=" + m_requestContentType);
-	envVector.push_back("UPLOAD_DIR=" + m_settings.getUploadedFilesPath());
+	envVector.push_back("UPLOAD_DIR=" + m_uploadedFilesPath);
 
 	return (vectorToCharPtrArr(envVector));
 }
@@ -484,6 +486,7 @@ void	HttpRequest::sendResponse() {
 	if (m_requestStatus == http::ERROR || m_requestStatus == http::OK) {
 		m_response =	m_version + " " + expandStatusCode() + "\r\n"
 						"Content-Type: " + expandContentType() + "\r\n"
+						"Connection: " + m_requestConnection + "\r\n"
 						"Content-Length: " + expandContentLength() + "\r\n"
 						"\r\n" + m_responseBody;
 		write(m_targetSocketFileDescriptor, m_response.c_str(), m_response.length());
@@ -491,7 +494,6 @@ void	HttpRequest::sendResponse() {
 	if (m_requestConnection == "close" || m_requestStatus == http::ERROR) {
 		m_requestStatus = CLOSE;
 	} else {
-		m_requestStatus = REQUEST_NOT_READ;
 		reset();
 	}
 }

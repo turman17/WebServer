@@ -222,8 +222,12 @@ void	Server::assignServerBlockSetting(const std::string& line, ServerBlock& serv
 		if (valueStream.fail())
 			throw BadConfig();
 		serverBlock.setScriptsPath(tmp);
-	}
-	else if (directive == "error_page") {
+	} else if (directive == "upload_dir") {
+		valueStream >> tmp;
+		if (valueStream.fail())
+			throw BadConfig();
+		serverBlock.setUploadedFilesPath(tmp);
+	} else if (directive == "error_page") {
 		if (countWords(value) != 2) {
 			throw BadConfig();
 		}
@@ -297,12 +301,6 @@ void	Server::assignLocationBlockSetting(const std::string& line, LocationBlock& 
 			throw BadConfig();
 		locationBlock.setDirectoryListing(tmp == "on" ? true: false);
 	}
-	else if (directive == "upload_dir") {
-		valueStream >> tmp;
-		if (valueStream.fail())
-			throw BadConfig();
-		locationBlock.setUploadedFilesPath(tmp);
-	}
 	else {
 		std::cout << directive << std::endl;
 		throw UnknownDirective();
@@ -357,7 +355,6 @@ void	Server::printSettings() {
 					std::cout << '\t' << "route to: " << (*it).getRoutePath() << std::endl;
 					std::cout << '\t' << "root: " << (*it).getRoot() << std::endl;
 					std::cout << '\t' << "index: " << (*it).getIndexFile() << std::endl;
-					std::cout << '\t' << (*it).getUploadedFilesPath() << std::endl;
 					std::pair<std::string, std::string> tmpPair = (*it).getRedirection();
 					std::cout << '\t' << tmpPair.first << std::endl;
 					std::cout << '\t' << tmpPair.second << std::endl;

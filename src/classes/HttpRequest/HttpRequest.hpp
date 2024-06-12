@@ -86,6 +86,7 @@ namespace http {
 		enum http::CGIStatus				m_cgiStatus;
 		const FileDescriptor				m_targetSocketFileDescriptor;
 		std::string							m_scriptsPath;
+		std::string							m_uploadedFilesPath;
 
 		
 		//* Private methods

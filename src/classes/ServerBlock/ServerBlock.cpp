@@ -1,7 +1,7 @@
 # include "ServerBlock.hpp"
 
 ServerBlock::ServerBlock() : m_port(80), m_maxBodySize(1024), m_hostname("0.0.0.0"),
-	m_serverName(""), m_root("./"), m_scriptsPath("./") {
+	m_serverName(""), m_root("./"), m_scriptsPath("./"), m_uploadedFilesPath("./") {
 		m_errorPages["404"] = "./Website/error_pages/404.html";
 		m_errorPages["500"] = "./Website/error_pages/500.html";
 		m_errorPages["501"] = "./Website/error_pages/501.html";
@@ -29,6 +29,7 @@ ServerBlock& ServerBlock::operator=(const ServerBlock& other) {
 		m_errorPages = other.m_errorPages;
 		m_LocationBlocks = other.m_LocationBlocks;
 		m_scriptsPath = other.m_scriptsPath;
+		m_uploadedFilesPath = other.m_uploadedFilesPath;
 	}
 	return (*this);
 }
@@ -81,4 +82,11 @@ const std::string&	ServerBlock::getScriptsPath() const {
 }
 void	ServerBlock::setScriptsPath(const std::string scriptsPath) {
 	m_scriptsPath = scriptsPath;
+}
+
+const std::string&	ServerBlock::getUploadedFilesPath() const {
+	return (m_uploadedFilesPath);
+}
+void	ServerBlock::setUploadedFilesPath(const std::string& uploadedFilesPath) {
+	m_uploadedFilesPath = uploadedFilesPath;
 }
