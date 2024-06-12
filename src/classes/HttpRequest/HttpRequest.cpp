@@ -99,8 +99,6 @@ RequestStatus	HttpRequest::readRequest() {
 */
 RequestStatus	HttpRequest::performReadOperations(const std::vector<ServerBlock>& serverBlocks) {
 
-	gettimeofday(&m_startTimeRequest, NULL);
-
 	switch (readRequest()) {
 
 		case CLOSE:
@@ -540,6 +538,7 @@ void HttpRequest::reset() {
 	m_requestStatus = REQUEST_NOT_READ;
 	m_parseState = FIRST_LINE;
 	m_cgiStatus = CGI_NOT_RUNNING;
+	gettimeofday(&m_startTimeRequest, NULL);
 }
 
 
