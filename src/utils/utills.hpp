@@ -21,6 +21,7 @@ std::string			basicHtml(const std::string& title, const std::string& body);
 char**				vectorToCharPtrArr(const std::vector<std::string>& vector);
 void				cleanCharPtrArr(char**& toClean);
 void				signalHandler(int signal_num);
+void				sigpipe_handler(int signum);
 std::string			strip(const std::string& str);
 std::string			decodeUrl(const std::string& url);
 

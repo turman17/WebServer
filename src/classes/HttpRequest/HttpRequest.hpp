@@ -65,6 +65,9 @@ namespace http {
 		void					setCgiOutputFd(int fd);
 		pid_t					getCgiPid();
 		FileDescriptor			getTargetSocketFileDescriptor();
+		bool					getKeepAlive();
+		std::string				getHostname();
+		int						getPort();
 
 	private:
 		std::string							m_hostname;
@@ -95,6 +98,8 @@ namespace http {
 		std::string							m_uploadedFilesPath;
 		int									m_CgiOutputFd;
 		pid_t								m_cgiPid;
+		int									m_requestId;
+		bool								m_keepAlive;
 
 		
 		//* Private methods

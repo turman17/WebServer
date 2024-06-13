@@ -1,5 +1,10 @@
 # include "Server.hpp"
 
+#define ANSI_COLOR_GREEN   "\x1b[32m"
+#define ANSI_COLOR_RED     "\x1b[31m"
+#define ANSI_COLOR_RESET   "\x1b[0m"
+#define ANSI_COLOR_BLUE    "\x1b[34m"
+
 volatile sig_atomic_t g_signalStatus = 0;
 
 Server::Server() {}
@@ -37,7 +42,13 @@ void	Server::run() {
 				if (newEvent.isNewConnection(m_listeningSockets)) {
 					acceptNewConnection(newEvent);
 				} else if (newEvent.isReadable()) {
-					activeRequest = m_clientsMap[newEvent.fd()];
+					try {
+						activeRequest = m_clientsMap[newEvent.fd()];
+					}
+					catch (...) {
+						m_eventsManager.remove(newEvent.fd());
+						continue;
+					}
 					if (activeRequest->getRequestStatus() == http::CLOSE)
 						continue;
 					status = activeRequest->performReadOperations(m_serverBlocks);
@@ -50,9 +61,8 @@ void	Server::run() {
 							m_eventsManager.add(activeRequest->getCgiOutputFd(), READ_OPERATIONS);
 							m_clientsMap.addToPipeMap(activeRequest->getCgiOutputFd(), activeRequest);
 						} else if (cgiStatus == http::CGI_READ) {
-							m_eventsManager.remove(activeRequest->getCgiOutputFd());
 							m_clientsMap.delFromPipeMap(activeRequest->getCgiOutputFd());
-							close(activeRequest->getCgiOutputFd());
+							m_eventsManager.remove(activeRequest->getCgiOutputFd());
 							activeRequest->setCgiOutputFd(-1);
 							status = http::CGI_COMPLETE;
 						}
@@ -66,7 +76,7 @@ void	Server::run() {
 						continue;
 					activeRequest->sendResponse();
 					if (activeRequest->getRequestStatus() == http::REQUEST_NOT_READ) {
-						m_eventsManager.mod(newEvent.fd(), READ_OPERATIONS);
+						m_eventsManager.mod(activeRequest->getTargetSocketFileDescriptor(), READ_OPERATIONS);
 					}
 				}
 			}
@@ -91,7 +101,8 @@ void	Server::acceptNewConnection(const Event& event) {
 	newConnectionFd = accept(event.fd(), NULL, NULL);
 	newConnectionFd.setNonBlocking();
 
-	std::cout << "\nNew connection on " << event.getHostname() << ":" << event.getPort() << std::endl;
+	std::cout << ANSI_COLOR_GREEN << " ◉ " << ANSI_COLOR_RESET
+		<< event.getHostname() << ":" << event.getPort() << "\n" << std::endl;
 
 	http::HttpRequest* newRequest = new http::HttpRequest(newConnectionFd);
 	newRequest->setPort(event.getPort());
@@ -113,14 +124,21 @@ void	Server::setupListeningSockets() {
 			try {
 				ServerSocket	newSocket((*current).getHostname(), (*current).getPort());
 				if (newSocket.isOpen()) {
-					std::cout << "Listening on " << (*current).getHostname() << ":" << (*current).getPort() << std::endl;
+                	std::cout << "Listening on " << std::setw(20) << std::left 
+					<< (*current).getHostname() << ":" << (*current).getPort()
+					<< ANSI_COLOR_GREEN << "  [SUCCESS]" << ANSI_COLOR_RESET << std::endl;
 					m_listeningSockets.push_back(newSocket);
+				} else {
+					throw std::exception();
 				}
 			}
 			catch (const std::exception& exception) {
-				std::cerr << "Error creating socket: " << exception.what() << std::endl;
+            	std::cerr << "Listening on " << std::setw(20) << std::left 
+					<< (*current).getHostname() << ":" << (*current).getPort()
+					<< ANSI_COLOR_RED << "  [FAILURE: " << exception.what() << "]" << ANSI_COLOR_RESET << std::endl;
 			}
 		}
+	std::cout << std::endl;
 }
 
 

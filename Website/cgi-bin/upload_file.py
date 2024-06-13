@@ -1,4 +1,3 @@
-#!/usr/bin/env python3
 import cgi
 import os
 import sys
@@ -40,7 +39,6 @@ def main():
 	print("Content-length:", len(html_content.encode('utf-8')))
 	print()
 	print(html_content)
-	sys.stdout.flush()
 
 
 if __name__ == "__main__":

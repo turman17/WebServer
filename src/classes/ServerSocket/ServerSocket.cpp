@@ -31,6 +31,7 @@ ServerSocket::ServerSocket(const std::string& hostname, const int& port)
 		in_addr_t IpAddress = resolveHostname(hostname);
 		bindSocket(IpAddress, port);
 		setListeningState();
+		m_fileDescriptor.setNonBlocking();
 	}
 	catch (const std::string& errorStr) {
 		closeSocket();

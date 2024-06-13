@@ -1,6 +1,10 @@
 #include "HttpRequest.hpp"
 #include "../Clients/Clients.hpp"
 
+#define ANSI_COLOR_RED     "\x1b[31m"
+#define ANSI_COLOR_RESET   "\x1b[0m"
+#define ANSI_COLOR_BLUE		"\x1b[34m"
+
 using namespace http;
 
 HttpRequest::HttpRequest(const FileDescriptor& targetSocketFileDescriptor) :
@@ -25,18 +29,24 @@ HttpRequest::HttpRequest(const FileDescriptor& targetSocketFileDescriptor) :
 	m_scriptsPath("/cgi-bin"),
 	m_uploadedFilesPath("./"),
 	m_CgiOutputFd(-1),
-	m_cgiPid(-1)
+	m_cgiPid(-1),
+	m_keepAlive(true)
 	{
 		gettimeofday(&m_startTimeRequest, NULL);
 	}
 
+bool HttpRequest::getKeepAlive() {
+	return (m_keepAlive);
+}
 
 HttpRequest::~HttpRequest() {
 	if (m_CgiOutputFd != -1) {
 		close(m_CgiOutputFd);
+		m_CgiOutputFd = -1;
 	}
 	if (m_cgiPid != -1) {
 		kill(m_cgiPid, SIGKILL);
+		m_cgiPid = -1;
 	}
 }
 
@@ -251,6 +261,14 @@ void	HttpRequest::buildErrorPage(const std::string& errorCode) {
 	m_statusCode = errorCode;
 }
 
+std::string	HttpRequest::getHostname() {
+	return (m_hostname);
+}
+
+int	HttpRequest::getPort() {
+	return (m_port);
+}
+
 
 /**
  * @brief Expands the status code of the response
@@ -399,13 +417,18 @@ CGIStatus	HttpRequest::performCgi() {
 	if (m_cgiStatus == CGI_NOT_RUNNING) {
 		int		inputPipe[2], outputPipe[2];
 
-		if (pipe(outputPipe) == -1 || (m_requestMethod == "POST" && pipe(inputPipe) == -1)) {
+		if (pipe(outputPipe) == -1
+			|| (m_requestMethod == "POST" && pipe(inputPipe) == -1)) {
 			throw CgiError();
 		}
 		m_CgiOutputFd = outputPipe[0];
-		fcntl(m_CgiOutputFd, F_SETFL, FD_CLOEXEC);
+		fcntl(outputPipe[0], F_SETFL, FD_CLOEXEC);
+		fcntl(outputPipe[1], F_SETFL, FD_CLOEXEC);
+
 		if (m_requestMethod == "POST") {
-			write(inputPipe[1], m_requestBody.data(), std::atoi(m_contentLength.c_str()));
+			fcntl(inputPipe[0], F_SETFL, FD_CLOEXEC);
+			fcntl(inputPipe[1], F_SETFL, FD_CLOEXEC);
+			write(inputPipe[1], m_requestBody.data(), m_requestBody.size());
 			close(inputPipe[1]);
 		}
 
@@ -440,6 +463,7 @@ void	HttpRequest::childProccess(int inputPipe[2], int outputPipe[2]) {
 	close(outputPipe[0]);
 	if (dup2(outputPipe[1], STDOUT_FILENO) == -1 || (m_requestMethod == "POST"
 			&& dup2(inputPipe[0], STDIN_FILENO) == -1)) {
+				//std::cerr << strerror(errno) << std::endl;
 				std::exit(1);
 			}
 	close(outputPipe[1]);
@@ -483,6 +507,16 @@ timeval	HttpRequest::getStartTimeRequest() {
 }
 
 
+static std::string StrToLower(std::string str) {
+	
+	std::string lowerStr = "";
+	for (std::string::iterator it = str.begin(); it != str.end(); std::advance(it, 1)) {
+		lowerStr += std::tolower(*it);
+	}
+	return (str);
+}
+
+
 /**
  * @brief Sends the HTTP response over a socket to a client
  *
@@ -493,13 +527,20 @@ void	HttpRequest::sendResponse() {
 		write(m_targetSocketFileDescriptor, m_response.c_str(), m_response.length());
 	} else {
 		m_response =	m_version + " " + expandStatusCode() + "\r\n"
+						"Connection: " + (StrToLower(m_requestConnection) == "close" ? "Close" : "Keep-alive") + "\r\n"
 						"Content-Type: " + expandContentType() + "\r\n"
-						"Connection: " + m_requestConnection + "\r\n"
 						"Content-Length: " + expandContentLength() + "\r\n"
 						"\r\n" + m_responseBody;
-		write(m_targetSocketFileDescriptor, m_response.c_str(), m_response.length());
+		if (write(m_targetSocketFileDescriptor, m_response.c_str(), m_response.length()) <= 0) {
+			m_requestConnection = "close";
+		} else {
+			std::cout << (std::atoi(m_statusCode.c_str()) >= 400 ? ANSI_COLOR_RED : ANSI_COLOR_BLUE) 
+				<< "  [" << m_hostname << ":" << m_port << "] " << m_statusCode << " "
+				<< m_requestMethod << " " << m_domain + m_URL << " " << m_version << ANSI_COLOR_RESET << std::endl;
+		}
 	}
-	if (m_requestConnection == "close") {
+	if (StrToLower(m_requestConnection) == "close") {
+		m_keepAlive = false;
 		m_requestStatus = CLOSE;
 	} else {
 		reset();
@@ -528,7 +569,7 @@ CGIStatus	HttpRequest::monitorCgiRunTime() {
 
 	gettimeofday(&now, NULL);
 	elapsed = (now.tv_sec - m_startTimeRequest.tv_sec) * 1000000LL + (now.tv_usec - m_startTimeRequest.tv_usec);
-	if (elapsed >= 2000000) {
+	if (elapsed >= 4000000) {
 		kill(m_cgiPid, SIGKILL);
 	}
 	if (waitpid(m_cgiPid, &status, WNOHANG) > 0) {
@@ -543,26 +584,31 @@ CGIStatus	HttpRequest::monitorCgiRunTime() {
 }
 
 void HttpRequest::reset() {
+
+	m_domain = "";
+	m_version = "HTTP/1.1";
 	m_requestMethod = "";
 	m_URL = "";
 	m_filePath = "";
 	m_queryString = "";
 	m_responseBody = "";
-	m_requestBody.clear();
 	m_contentType = "";
 	m_requestContentType = "";
+	m_requestConnection = "";
 	m_contentLength = "0";
 	m_response = "";
 	m_statusCode = "";
-	m_settings = LocationBlock();
+	m_maxBodySize = 1024;
 	m_requestStatus = REQUEST_NOT_READ;
 	m_parseState = FIRST_LINE;
 	m_cgiStatus = CGI_NOT_RUNNING;
+	m_requestBody.clear();
+	m_scriptsPath = "/cgi-bin";
+	m_uploadedFilesPath = "./";
 	m_CgiOutputFd = -1;
 	m_cgiPid = -1;
 	gettimeofday(&m_startTimeRequest, NULL);
 }
-
 
 //* Setters and Getters
 

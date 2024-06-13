@@ -1,10 +1,19 @@
-#!/usr/bin/env python3
 import cgi
 import sys
 
 def main():
+
+	while True:
+		print("HTTP/1.1 200 OK")
 		
 	form = cgi.FieldStorage()
+
+	email = form['email'].value if 'email' in form else None
+	password = form['password'].value if 'password' in form else None
+
+	if not email or not password:
+		sys.exit("Error: Email and password are required")
+			
 
 	html_content = """<html>
 	<head>
@@ -22,14 +31,13 @@ def main():
 	</body>
 	</html>"""
 
-	html_content = html_content.format(email=form['email'].value, password=form['password'].value)
+	html_content = html_content.format(email=email, password=password)
 
 	print("HTTP/1.1 200 OK")
 	print("Content-type: text/html; charset=utf-8")
 	print("Content-length:", len(html_content.encode('utf-8')))
 	print()
 	print(html_content)
-	sys.stdout.flush()
 
 
 if __name__ == "__main__":

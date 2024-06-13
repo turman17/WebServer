@@ -114,6 +114,12 @@ void signalHandler(int signal_num) {
 	g_signalStatus = 1;
 }
 
+void sigpipe_handler(int signum) {
+    std::cerr << "SIGPIPE received: Broken pipe error" << std::endl;
+	(void)signum;
+}
+
+
 std::string	strip(const std::string& str) {
 
 	std::string::const_iterator firstLetterIt = str.begin();

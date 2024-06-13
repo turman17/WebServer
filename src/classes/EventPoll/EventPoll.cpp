@@ -78,6 +78,7 @@ void	EventPoll::mod(const FileDescriptor& fileDescriptor, uint32_t eventsToNotif
 */
 void	EventPoll::remove(const FileDescriptor& fileDescriptor) const {
 
+
 	epoll_ctl(m_fileDescriptor, EPOLL_CTL_DEL, fileDescriptor, NULL);
 	fileDescriptor.close();
 }
@@ -126,9 +127,6 @@ Event	EventPoll::getNextEvent() const {
 
 	Event nextEvent = m_newEvents.front();
 	m_newEvents.pop_front();
-
-	std::cout << "EventPoll::getNextEvent() - fd: " << nextEvent.fd() << std::endl;
-	std::cout << "EventPoll::getNextEvent() - events: " << nextEvent.getEvents() << std::endl;
 
 	return (nextEvent);
 }

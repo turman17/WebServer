@@ -1,6 +1,9 @@
 #include "Clients.hpp"
 #include "../EventPoll/EventPoll.hpp"
 
+#define ANSI_COLOR_RED     "\x1b[31m"
+#define ANSI_COLOR_RESET   "\x1b[0m"
+
 using namespace http;
 
 void	Clients::addToSocketMap(const FileDescriptor& fd, HttpRequest* request) {
@@ -48,12 +51,17 @@ void	Clients::removeClosedConnections(EventPoll& eventManager) {
 		elapsed = (now.tv_sec - it->second->getStartTimeRequest().tv_sec) * 1000000LL +
 			(now.tv_usec - it->second->getStartTimeRequest().tv_usec);
 		next = std_next(it);
-		if (it->second->getRequestStatus() == http::CLOSE || elapsed > 5000000) {
-			eventManager.remove(it->first);
+		if (it->second->getRequestStatus() == http::CLOSE || elapsed > 15000000) {
+			std::cout << "\n" << ANSI_COLOR_RED << " ◉ " << ANSI_COLOR_RESET << it->second->getHostname() << ":" << it->second->getPort() << std::endl;
+			int fd = it->first;
+			eventManager.remove(fd);
 			delete it->second;
 			m_socketToRequestMap.erase(it);
-		} else {
+		} else if (it->second->getCgiStatus() == http::CGI_RUNNING) {
 			if (it->second->monitorCgiRunTime() == http::CGI_ERROR) {
+				delFromPipeMap(it->second->getCgiOutputFd());
+				eventManager.remove(it->second->getCgiOutputFd());
+				it->second->setCgiOutputFd(-1);
 				it->second->buildErrorPage(http::INTERNAL_ERROR_500);
 				it->second->setRequestStatus(http::ERROR);
 				eventManager.mod(it->first, WRITE_OPERATIONS);
