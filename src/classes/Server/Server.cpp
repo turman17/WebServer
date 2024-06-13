@@ -15,7 +15,6 @@ Server::~Server() {
 			it != m_listeningSockets.end(); std::advance(it, 1)) {
 				(*it).closeSocket();
 			}
-
 }
 
 
@@ -169,6 +168,7 @@ void	Server::loadConfig(const char* filename) {
 	std::ifstream						configFile(filename);
 	std::map<std::string, std::string>	ConfigMap;
 	std::string							line = "";
+	std::string							errorLine = "";
 
 	if (configFile.fail()) {
 		throw BadOpenFile();
@@ -184,7 +184,7 @@ void	Server::loadConfig(const char* filename) {
 				if (isOnlySpaces(line) || line[i] == '#') {
 					continue;
 				}
-				if (startsWith(std::string("location"), line)) {
+				if (startsWith(std::string("location "), line)) {
 					LocationBlock 		newLocationBlock;
 					newLocationBlock.setRoot(newServerBlock.getRoot());
 					std::stringstream	tmpStream(line);
@@ -208,6 +208,10 @@ void	Server::loadConfig(const char* filename) {
 				}
 			}
 			m_serverBlocks.push_back(newServerBlock);
+		} else if (line.empty() || line[0] == '#') {
+			continue; 
+		} else {
+			throw BadConfig();
 		}
 	}
 }

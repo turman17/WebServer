@@ -19,7 +19,12 @@ int main(int argc, char**argv) {
 	act.sa_flags = 0;
 	sigaction(SIGINT, &act, NULL);
 
-	server.loadConfig(argv[1]);
+	try {
+		server.loadConfig(argv[1]);
+	} catch (...) {
+		std::cerr << "Error: Config file not found or invalid" << std::endl;
+		return (1);
+	}
 	//server.printSettings();
 
 	server.run();
