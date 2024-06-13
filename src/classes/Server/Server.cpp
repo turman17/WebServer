@@ -1,4 +1,5 @@
 # include "Server.hpp"
+# include "webserv.hpp"
 
 #define ANSI_COLOR_GREEN   "\x1b[32m"
 #define ANSI_COLOR_RED     "\x1b[31m"
@@ -14,6 +15,7 @@ Server::~Server() {
 			it != m_listeningSockets.end(); std::advance(it, 1)) {
 				(*it).closeSocket();
 			}
+
 }
 
 
@@ -34,6 +36,7 @@ void	Server::run() {
 			}
 		}
 		catch (const std::exception&) {
+			m_clientsMap.closeOpenConnections();
 			return;
 		}
 		while (NEW_EVENTS && g_signalStatus == 0) {

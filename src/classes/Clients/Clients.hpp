@@ -15,6 +15,7 @@ public:
 	void				removeClosedConnections(EventPoll& eventManager);	
 	FileDescriptor		getSocketByPipe(FileDescriptor pipeRead);
 	FileDescriptor		getSocketByRequest(http::HttpRequest* request);
+	void				closeOpenConnections();
 
 	http::HttpRequest* & operator[](const FileDescriptor& key);
 	

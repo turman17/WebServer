@@ -100,6 +100,7 @@ namespace http {
 		pid_t								m_cgiPid;
 		int									m_requestId;
 		bool								m_keepAlive;
+		bool								m_isChunked;
 
 		
 		//* Private methods

@@ -30,7 +30,8 @@ HttpRequest::HttpRequest(const FileDescriptor& targetSocketFileDescriptor) :
 	m_uploadedFilesPath("./"),
 	m_CgiOutputFd(-1),
 	m_cgiPid(-1),
-	m_keepAlive(true)
+	m_keepAlive(true),
+	m_isChunked(false)
 	{
 		gettimeofday(&m_startTimeRequest, NULL);
 	}
@@ -50,6 +51,18 @@ HttpRequest::~HttpRequest() {
 	}
 }
 
+static std::vector<byte>::iterator find_crlf(std::vector<byte>::iterator begin, std::vector<byte>::iterator end) {
+    std::vector<byte>::iterator it = begin;
+
+    while (it != end) {
+        if (*it == '\r' && (it + 1) != end && *(it + 1) == '\n') {
+            return it;
+        }
+        it++;
+    }
+    return end;
+}
+
 
 /**
  * @brief Reads the HTTP request from the client
@@ -63,6 +76,7 @@ RequestStatus	HttpRequest::readRequest() {
 	unsigned int		offset = 0;
 	char				buffer[BUFFER_SIZE + 1];
 	std::vector<byte>*	line(0);
+	int					nextChunkSize = 0;
 
 	bytesRead = read(m_targetSocketFileDescriptor, buffer, BUFFER_SIZE);
 	if (bytesRead <= 0) {
@@ -92,15 +106,54 @@ RequestStatus	HttpRequest::readRequest() {
 				m_requestContentType = strip(lineStr.substr(lineStr.find(":") + 2));
 			} else if (startsWith("Connection:", lineStr)) {
 				m_requestConnection = strip(lineStr.substr(lineStr.find(":") + 2));
+			} else if (startsWith("Transfer-Encoding:", lineStr)) {
+				m_isChunked = (strip(lineStr.substr(lineStr.find(":") + 2)) == "chunked");
 			} else if (lineStr == "\n" || lineStr == "\r\n") {
 				m_parseState = BODY;
 			}
 		} else {
-			m_requestBody.insert(m_requestBody.end(), line->begin(), line->end());
+			if (m_isChunked) {
+				do {
+					ByteStreamIt sizeEnd = find_crlf(line->begin(), line->end());
+					std::string chunkSizeStr(line->begin(), sizeEnd);
+					std::cout << "Chunk Size: " << chunkSizeStr << std::endl;
+					nextChunkSize = std::strtol(chunkSizeStr.c_str(), NULL, 16);
+					if (nextChunkSize == 0) {
+						if (chunkSizeStr == "0" && nextChunkSize == 0) {
+							delete (line);
+							std::string outcome(m_requestBody.begin(), m_requestBody.end());
+							std::cout << outcome << std::endl;
+							return (REQUEST_READ);
+						}
+						if (bytesRead < BUFFER_SIZE) {
+							m_parseState = FIRST_LINE;
+						}
+						delete (line);
+						return (REQUEST_NOT_READ);
+					}
+					std::vector<byte>::iterator chunkStart = std_next(sizeEnd, 2);
+					std::vector<byte>::iterator chunkEnd = std_next(chunkStart, nextChunkSize);
+					std::vector<byte> chunk(chunkStart, chunkEnd);
+
+					m_requestBody.insert(m_requestBody.end(), chunk.begin(), chunk.end());
+
+					if (std::distance(chunkEnd, line->end()) > 2) {
+						line->erase(line->begin(), std_next(chunkEnd, 2));
+					} else {
+						if (bytesRead < BUFFER_SIZE) {
+							m_parseState = FIRST_LINE;
+						}
+						delete (line);
+						return (REQUEST_NOT_READ);
+					}
+				} while (nextChunkSize != 0);
+			} else {
+				m_requestBody.insert(m_requestBody.end(), line->begin(), line->end());
+			}
 		}
 		delete (line);
 	}
-	if (static_cast<int>(m_requestBody.size()) >= std::atoi(m_contentLength.c_str())) {
+	if (static_cast<int>(m_requestBody.size()) >= std::atoi(m_contentLength.c_str()) && !m_isChunked) {
 		return (REQUEST_READ);
 	}
 	return (REQUEST_NOT_READ);
@@ -531,13 +584,13 @@ void	HttpRequest::sendResponse() {
 						"Content-Type: " + expandContentType() + "\r\n"
 						"Content-Length: " + expandContentLength() + "\r\n"
 						"\r\n" + m_responseBody;
-		if (write(m_targetSocketFileDescriptor, m_response.c_str(), m_response.length()) <= 0) {
-			m_requestConnection = "close";
-		} else {
-			std::cout << (std::atoi(m_statusCode.c_str()) >= 400 ? ANSI_COLOR_RED : ANSI_COLOR_BLUE) 
-				<< "  [" << m_hostname << ":" << m_port << "] " << m_statusCode << " "
-				<< m_requestMethod << " " << m_domain + m_URL << " " << m_version << ANSI_COLOR_RESET << std::endl;
-		}
+	}
+	if (write(m_targetSocketFileDescriptor, m_response.c_str(), m_response.length()) <= 0) {
+		m_requestConnection = "close";
+	} else {
+		std::cout << (std::atoi(m_statusCode.c_str()) >= 400 ? ANSI_COLOR_RED : ANSI_COLOR_BLUE) 
+			<< "  [" << m_hostname << ":" << m_port << "] " << m_statusCode << " "
+			<< m_requestMethod << " " << m_domain + m_URL << " " << m_version << ANSI_COLOR_RESET << std::endl;
 	}
 	if (StrToLower(m_requestConnection) == "close") {
 		m_keepAlive = false;

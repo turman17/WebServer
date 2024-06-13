@@ -105,7 +105,22 @@ HttpRequest*& Clients::operator[](const FileDescriptor& key) {
 	throw MapEntryNotFound();
 }
 
+void	Clients::closeOpenConnections() {
+
+	http::Iterator it = m_socketToRequestMap.begin();
+	while (it != m_socketToRequestMap.end()) {
+		delete it->second;
+		if (it->first != -1) {
+			close(it->first);
+		}
+		it++;
+	}
+	m_socketToRequestMap.clear();
+
+}
 
 const char* Clients::MapEntryNotFound::what() const throw() {
 	return ("Map entry not found");
 }
+
+

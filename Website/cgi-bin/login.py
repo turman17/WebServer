@@ -2,9 +2,6 @@ import cgi
 import sys
 
 def main():
-
-	while True:
-		print("HTTP/1.1 200 OK")
 		
 	form = cgi.FieldStorage()
 
@@ -13,7 +10,6 @@ def main():
 
 	if not email or not password:
 		sys.exit("Error: Email and password are required")
-			
 
 	html_content = """<html>
 	<head>

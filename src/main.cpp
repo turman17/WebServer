@@ -21,5 +21,6 @@ int main(int argc, char**argv) {
 
 	server.loadConfig(argv[1]);
 	//server.printSettings();
+
 	server.run();
 }

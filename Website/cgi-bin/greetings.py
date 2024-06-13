@@ -3,6 +3,7 @@ import sys
 
 def main():
 
+
 	form = cgi.FieldStorage()
 
 	username = form.getvalue("username", "Guest")
