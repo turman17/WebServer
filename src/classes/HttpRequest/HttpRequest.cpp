@@ -72,6 +72,7 @@ static std::vector<byte>::iterator find_crlf(std::vector<byte>::iterator begin, 
 */
 RequestStatus	HttpRequest::readRequest() {
 
+	gettimeofday(&m_startTimeRequest, NULL);
 	ssize_t				bytesRead = 0;
 	unsigned int		offset = 0;
 	char				buffer[BUFFER_SIZE + 1];
