@@ -130,9 +130,14 @@ void Server::setupEpoll() {
 */
 void	Server::loadConfig(const char* filename) {
 
-	std::ifstream						configFile(filename);
-	std::map<std::string, std::string>	ConfigMap;
-	std::string							line = "";
+	std::ifstream fileCheck(filename);
+	if (!fileCheck.good()) {
+		throw std::runtime_error("File does not exist");
+	}
+
+	std::ifstream configFile(filename);
+	std::map<std::string, std::string> ConfigMap;
+	std::string line = "";
 
 	if (configFile.fail()) {
 		throw BadOpenFile();
