@@ -135,11 +135,13 @@ void	Server::loadConfig(const char* filename) {
 		throw std::runtime_error("File does not exist");
 	}
 
+	m_parsingOutput = true;
 	std::ifstream configFile(filename);
 	std::map<std::string, std::string> ConfigMap;
 	std::string line = "";
 
 	if (configFile.fail()) {
+		m_parsingOutput = false;
 		throw BadOpenFile();
 	}
 
@@ -208,49 +210,65 @@ void	Server::assignServerBlockSetting(const std::string& line, ServerBlock& serv
 			valueStream >> tmp;
 			serverBlock.setPort(std::atoi(tmp.c_str()));
 		}
-		if (valueStream.fail())
+		if (valueStream.fail()){
+			m_parsingOutput = false;
 			throw BadConfig();
+		}
 	}
 	else if (directive == "server_name") {
 		valueStream >> tmp;
-		if (valueStream.fail())
+		if (valueStream.fail()){
+			m_parsingOutput = false;
 			throw BadConfig();
+		}
 		serverBlock.setServerName(tmp);
 	}
 	else if (directive == "root") {
 		valueStream >> tmp;
-		if (valueStream.fail())
+		if (valueStream.fail()){
+			m_parsingOutput = false;
 			throw BadConfig();
+		}
 		serverBlock.setRoot(tmp);
 	} else if (directive == "scripts_path") {
 		valueStream >> tmp;
-		if (valueStream.fail())
+		if (valueStream.fail()){
+			m_parsingOutput = false;
 			throw BadConfig();
+		}
 		serverBlock.setScriptsPath(tmp);
 	} else if (directive == "upload_dir") {
 		valueStream >> tmp;
-		if (valueStream.fail())
+		if (valueStream.fail()){
+			m_parsingOutput = false;
 			throw BadConfig();
+		}
 		serverBlock.setUploadedFilesPath(tmp);
 	} else if (directive == "error_page") {
 		if (countWords(value) != 2) {
+			m_parsingOutput = false;
 			throw BadConfig();
 		}
 		std::string errorCode;
 		valueStream >> errorCode;
 		valueStream >> tmp;
-		if (valueStream.fail())
+		if (valueStream.fail()){
+			m_parsingOutput = false;
 			throw BadConfig();
+		}
 		if (isFile(tmp))
 			serverBlock.addErrorPage(errorCode, tmp);
 	}
 	else if (directive == "client_max_body_size") {
 		valueStream >> tmp;
-		if (valueStream.fail())
+		if (valueStream.fail()){
+			m_parsingOutput = false;
 			throw BadConfig();
+		}
 		serverBlock.setMaxBodySize(std::atoi(tmp.c_str()));
 	}
 	else {
+		m_parsingOutput = false;
 		throw UnknownDirective();
 	}
 }
@@ -275,22 +293,28 @@ void	Server::assignLocationBlockSetting(const std::string& line, LocationBlock& 
 
 	if (directive == "root") {
 		valueStream >> tmp;
-		if (valueStream.fail())
+		if (valueStream.fail()){
+			m_parsingOutput = false;
 			throw BadConfig();
+		}
 		locationBlock.setRoot(tmp);
 	}
 	else if (directive == "index") {
 		valueStream >> tmp;
-		if (valueStream.fail())
+		if (valueStream.fail()){
+			m_parsingOutput = false;
 			throw BadConfig();
+		}
 		locationBlock.setIndexFile(tmp);
 	}
 	else if (directive == "return") {
 		std::string statusCode;
 		valueStream >> statusCode;
 		valueStream >> tmp;
-		if (valueStream.fail())
+		if (valueStream.fail()){
+			m_parsingOutput = false;
 			throw BadConfig();
+		}
 		locationBlock.setRedirection(std::make_pair(statusCode, tmp));
 	}
 	else if (directive == "allow") {
@@ -302,12 +326,15 @@ void	Server::assignLocationBlockSetting(const std::string& line, LocationBlock& 
 	}
 	else if (directive == "autoindex") {
 		valueStream >> tmp;
-		if (valueStream.fail() || (tmp != "on" && tmp != "off"))
+		if (valueStream.fail() || (tmp != "on" && tmp != "off")){
+			m_parsingOutput = false;
 			throw BadConfig();
+		}
 		locationBlock.setDirectoryListing(tmp == "on" ? true: false);
 	}
 	else {
 		std::cout << directive << std::endl;
+		m_parsingOutput = false;
 		throw UnknownDirective();
 	}
 }
@@ -371,4 +398,9 @@ void	Server::printSettings() {
 					std::cout << '\t' << (*it).getDirectoryListing() << std::endl;;
 			}
 	}
+}
+
+bool Server::getParsingOutput()
+{
+	return m_parsingOutput;
 }
